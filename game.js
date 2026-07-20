@@ -344,7 +344,7 @@ const FB = {
   isStaff() { return this.role === 'founder' || this.role === 'admin'; },
 
   // create yardımcı (otomatik id)
-  async create(coll, obj) { const c = this.cfg(); if (!c || !this.ok) return null; try { return await fetch(this.base() + '/' + coll, { method: 'POST', headers: this.hdr(), body: JSON.stringify(this.enc(obj)) }).then(x => x.json()); } catch (e) { return null; } },
+  async create(coll, obj) { const c = this.cfg(); if (!c || !this.ok) return null; try { return await (await this.authFetch(this.base() + '/' + coll, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(this.enc(obj)) })).json(); } catch (e) { return null; } },
 
   // ---- KURUCU/ADMİN GİRİŞİ (e-posta+şifre → sabit uid, döngü yok) ----
   async loginEmail(email, pass) {
@@ -403,30 +403,38 @@ const FB = {
 
   // admin → founder'a kalıcı ban isteği
   async requestPermBan(uid, reason) { const r = await this.put('ban_requests/' + uid, { by: this.uid, reason: (reason || '').slice(0, 200), t: Date.now() }); return !!(r && !r.error && r.name); },
-  async listBanReqs() { try { const r = await fetch(this.base() + '/ban_requests?pageSize=100', { headers: this.hdr() }).then(x => x.json()); return (r.documents || []).map(d => ({ id: d.name.split('/').pop(), ...this.dec(d) })); } catch (e) { return []; } },
+  async listBanReqs() { try { const r = await (await this.authFetch(this.base() + '/ban_requests?pageSize=100')).json(); return (r.documents || []).map(d => ({ id: d.name.split('/').pop(), ...this.dec(d) })); } catch (e) { return []; } },
   async clearBanReq(uid) { await this.del('ban_requests/' + uid); },
 
   // admin başvurusu
   async applyAdmin(reason) { const r = await this.put('admin_requests/' + this.uid, { name: (save.name || 'Pilot').slice(0, 16), reason: (reason || '').slice(0, 300), t: Date.now() }); return !!(r && !r.error && r.name); },
-  async listAdminReqs() { try { const r = await fetch(this.base() + '/admin_requests?pageSize=100', { headers: this.hdr() }).then(x => x.json()); return (r.documents || []).map(d => ({ id: d.name.split('/').pop(), ...this.dec(d) })); } catch (e) { return []; } },
+  async listAdminReqs() { try { const r = await (await this.authFetch(this.base() + '/admin_requests?pageSize=100')).json(); return (r.documents || []).map(d => ({ id: d.name.split('/').pop(), ...this.dec(d) })); } catch (e) { return []; } },
   async approveAdmin(uid, name) { const r = await this.put('admins/' + uid, { name: (name || 'Admin').slice(0, 16), t: Date.now() }); const ok = !!(r && !r.error && r.name); if (ok) { await this.del('admin_requests/' + uid); this.admins = null; } return ok; },
   async rejectAdmin(uid) { await this.del('admin_requests/' + uid); },
-  async listAdmins() { try { const r = await fetch(this.base() + '/admins?pageSize=300', { headers: this.hdr() }).then(x => x.json()); return (r.documents || []).map(d => ({ id: d.name.split('/').pop(), ...this.dec(d) })); } catch (e) { return []; } },
+  async listAdmins() { try { const r = await (await this.authFetch(this.base() + '/admins?pageSize=300')).json(); return (r.documents || []).map(d => ({ id: d.name.split('/').pop(), ...this.dec(d) })); } catch (e) { return []; } },
   async removeAdmin(uid) { await this.del('admins/' + uid); this.admins = null; },
 
   // hata bildirimi
   async sendReport(type, text) { return await this.create('reports', { type: type, text: (text || '').slice(0, 500), name: (save.name || 'Pilot').slice(0, 16), uid: this.uid, status: 'open', t: Date.now() }); },
-  async listReports() { try { const r = await fetch(this.base() + '/reports?pageSize=100', { headers: this.hdr() }).then(x => x.json()); return (r.documents || []).map(d => ({ id: d.name.split('/').pop(), ...this.dec(d) })).sort((a, b) => (b.t || 0) - (a.t || 0)); } catch (e) { return []; } },
+  async listReports() { try { const r = await (await this.authFetch(this.base() + '/reports?pageSize=100')).json(); return (r.documents || []).map(d => ({ id: d.name.split('/').pop(), ...this.dec(d) })).sort((a, b) => (b.t || 0) - (a.t || 0)); } catch (e) { return []; } },
   async resolveReport(id) { await this.del('reports/' + id); },
 
   // destek sohbeti (ticket = uid başına)
   async openTicket() { await this.put('tickets/' + this.uid, { name: (save.name || 'Pilot').slice(0, 16), uid: this.uid, status: 'open', t: Date.now() }); },
   async ticketSend(uid, from, text) { return await this.create('tickets/' + uid + '/messages', { from: from, name: (save.name || 'Pilot').slice(0, 16), text: (text || '').slice(0, 500), t: Date.now() }); },
-  async ticketMsgs(uid) { try { const r = await fetch(this.base() + '/tickets/' + uid + '/messages?pageSize=100', { headers: this.hdr() }).then(x => x.json()); return (r.documents || []).map(d => this.dec(d)).sort((a, b) => (a.t || 0) - (b.t || 0)); } catch (e) { return []; } },
-  async listTickets() { try { const r = await fetch(this.base() + '/tickets?pageSize=100', { headers: this.hdr() }).then(x => x.json()); return (r.documents || []).map(d => ({ id: d.name.split('/').pop(), ...this.dec(d) })).sort((a, b) => (b.t || 0) - (a.t || 0)); } catch (e) { return []; } },
+  async ticketMsgs(uid) { try { const r = await (await this.authFetch(this.base() + '/tickets/' + uid + '/messages?pageSize=100')).json(); return (r.documents || []).map(d => this.dec(d)).sort((a, b) => (a.t || 0) - (b.t || 0)); } catch (e) { return []; } },
+  async listTickets() { try { const r = await (await this.authFetch(this.base() + '/tickets?pageSize=100')).json(); return (r.documents || []).map(d => ({ id: d.name.split('/').pop(), ...this.dec(d) })).sort((a, b) => (b.t || 0) - (a.t || 0)); } catch (e) { return []; } },
   // ---- düşük seviye Firestore yardımcıları (odalar + turnuva + bulut) ----
   base() { const c = this.cfg(); return 'https://firestore.googleapis.com/v1/projects/' + c.projectId + '/databases/(default)/documents'; },
   hdr() { return { 'Content-Type': 'application/json', Authorization: 'Bearer ' + this.token }; },
+  // yetkili istek: 401/403 alırsa token'ı yenileyip bir kez daha dener (kendi kendini onarır)
+  async authFetch(url, opts) {
+    opts = opts || {};
+    const mk = () => Object.assign({}, opts, { headers: Object.assign({}, opts.headers || {}, { Authorization: 'Bearer ' + this.token }) });
+    let res = await fetch(url, mk());
+    if (res.status === 401 || res.status === 403) { if (await this.refreshToken()) res = await fetch(url, mk()); }
+    return res;
+  },
   enc(o) { // js objesi → firestore fields
     const f = {};
     for (const k in o) {
@@ -438,10 +446,10 @@ const FB = {
     return { fields: f };
   },
   dec(doc) { const o = {}; const f = (doc && doc.fields) || {}; for (const k in f) { const v = f[k]; o[k] = v.integerValue !== undefined ? parseInt(v.integerValue) : v.doubleValue !== undefined ? v.doubleValue : v.booleanValue !== undefined ? v.booleanValue : v.stringValue; } return o; },
-  async put(path, obj) { const c = this.cfg(); if (!c || !this.ok) return null; try { const mask = Object.keys(obj).map(k => 'updateMask.fieldPaths=' + k).join('&'); return await fetch(this.base() + '/' + path + '?' + mask, { method: 'PATCH', headers: this.hdr(), body: JSON.stringify(this.enc(obj)) }).then(x => x.json()); } catch (e) { return null; } },
-  async get(path) { const c = this.cfg(); if (!c || !this.ok) return null; try { const r = await fetch(this.base() + '/' + path, { headers: this.hdr() }).then(x => x.json()); return r.fields ? this.dec(r) : null; } catch (e) { return null; } },
-  async del(path) { const c = this.cfg(); if (!c || !this.ok) return; try { await fetch(this.base() + '/' + path, { method: 'DELETE', headers: this.hdr() }); } catch (e) {} },
-  async list(coll) { const c = this.cfg(); if (!c || !this.ok) return []; try { const r = await fetch(this.base() + '/' + coll + '?pageSize=20', { headers: this.hdr() }).then(x => x.json()); return (r.documents || []).map(d => ({ id: d.name.split('/').pop(), ...this.dec(d) })); } catch (e) { return []; } },
+  async put(path, obj) { const c = this.cfg(); if (!c || !this.ok) return null; try { const mask = Object.keys(obj).map(k => 'updateMask.fieldPaths=' + k).join('&'); return await (await this.authFetch(this.base() + '/' + path + '?' + mask, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(this.enc(obj)) })).json(); } catch (e) { return null; } },
+  async get(path) { const c = this.cfg(); if (!c || !this.ok) return null; try { const r = await (await this.authFetch(this.base() + '/' + path)).json(); return r.fields ? this.dec(r) : null; } catch (e) { return null; } },
+  async del(path) { const c = this.cfg(); if (!c || !this.ok) return; try { await this.authFetch(this.base() + '/' + path, { method: 'DELETE' }); } catch (e) {} },
+  async list(coll) { const c = this.cfg(); if (!c || !this.ok) return []; try { const r = await (await this.authFetch(this.base() + '/' + coll + '?pageSize=20')).json(); return (r.documents || []).map(d => ({ id: d.name.split('/').pop(), ...this.dec(d) })); } catch (e) { return []; } },
   // ---- turnuva skor tablosu (günlük/haftalık ayrı koleksiyon) ----
   async submitTournament(sc) {
     const c = this.cfg(); if (!c || !this.ok || !sc || this.banned) return;
