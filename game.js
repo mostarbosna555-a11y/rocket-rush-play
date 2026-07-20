@@ -210,6 +210,9 @@ function detectCountry() {
 }
 
 // ---------- FIREBASE (anonim giriş + gerçek skor tablosu) ----------
+// Kurucu (founder) uid — tek kalıcı yetkili. Değişirse hem burada hem
+// firestore.rules'da güncellenir.
+const FOUNDER_UID = 'dZXicmUUP5hpErq0o15V7Ote11m2';
 const FB = {
   ok: false, uid: null, token: null, rows: null, rowsAt: 0,
   cfg() { return (typeof FIREBASE !== 'undefined' && FIREBASE.apiKey && FIREBASE.projectId) ? FIREBASE : null; },
@@ -244,7 +247,7 @@ const FB = {
   },
   async submit() {
     const c = this.cfg();
-    if (!c || !this.ok || !save.best) return;
+    if (!c || !this.ok || !save.best || this.banned) return;
     try {
       await fetch('https://firestore.googleapis.com/v1/projects/' + c.projectId +
         '/databases/(default)/documents/scores/' + this.uid +
@@ -281,16 +284,105 @@ const FB = {
         const f = it.document.fields || {};
         const uid = it.document.name.split('/').pop();
         rows.push({
+          id: uid,
           name: f.name ? f.name.stringValue : 'Pilot',
           cc: f.country ? f.country.stringValue : 'US',
           s: f.best ? parseInt(f.best.integerValue) : 0,
           me: uid === this.uid,
         });
       }
-      if (rows.length) { this.rows = rows; this.rowsAt = Date.now(); return rows; }
+      // aktif banlı oyuncuları gizle + admin işareti koy
+      const bans = await this.fetchBans();
+      const adm = await this.fetchAdmins();
+      const clean = rows.filter(r => !this.banActive(bans.get(r.id)));
+      for (const r of clean) { r.admin = adm.has(r.id); r.founder = (r.id === FOUNDER_UID); }
+      if (rows.length) { this.rows = clean; this.rowsAt = Date.now(); return clean; }
     } catch (e) {}
     return null;
   },
+
+  // ---- MODERASYON + ROLLER ----
+  banned: false,               // benim aktif ban durumum
+  role: 'user',                // 'founder' | 'admin' | 'user'
+  admins: null,                // admin uid seti (rozet + rol için)
+  _bans: null, _bansAt: 0,     // uid -> { permanent, until, reason, by }
+
+  // ban aktif mi? (kalıcı VEYA süresi dolmamış geçici)
+  banActive(b) { return !!b && (b.permanent === true || (typeof b.until === 'number' && b.until > Date.now())); },
+
+  async fetchBans() {
+    const c = this.cfg();
+    if (!c || !this.ok) return this._bans || (this._bans = new Map());
+    if (this._bans && Date.now() - this._bansAt < 30000) return this._bans;
+    const m = new Map();
+    try {
+      const r = await fetch(this.base() + '/bans?pageSize=300', { headers: this.hdr() }).then(x => x.json());
+      for (const d of (r.documents || [])) m.set(d.name.split('/').pop(), this.dec(d));
+    } catch (e) {}
+    this._bans = m; this._bansAt = Date.now();
+    return m;
+  },
+  async isBanned(uid) { const m = await this.fetchBans(); return this.banActive(m.get(uid)); },
+
+  // rol tespiti
+  async fetchAdmins() {
+    const c = this.cfg();
+    if (!c || !this.ok) return this.admins || (this.admins = new Set());
+    try {
+      const r = await fetch(this.base() + '/admins?pageSize=300', { headers: this.hdr() }).then(x => x.json());
+      this.admins = new Set((r.documents || []).map(d => d.name.split('/').pop()));
+    } catch (e) { this.admins = this.admins || new Set(); }
+    return this.admins;
+  },
+  async detectRole() {
+    if (!this.ok) { this.role = 'user'; return this.role; }
+    if (this.uid === FOUNDER_UID) { this.role = 'founder'; return this.role; }
+    const a = await this.fetchAdmins();
+    this.role = a.has(this.uid) ? 'admin' : 'user';
+    return this.role;
+  },
+  isStaff() { return this.role === 'founder' || this.role === 'admin'; },
+
+  // create yardımcı (otomatik id)
+  async create(coll, obj) { const c = this.cfg(); if (!c || !this.ok) return null; try { return await fetch(this.base() + '/' + coll, { method: 'POST', headers: this.hdr(), body: JSON.stringify(this.enc(obj)) }).then(x => x.json()); } catch (e) { return null; } },
+
+  // ban uygula: opts { permanent:bool, days:int, reason:str }
+  async ban(uid, opts) {
+    opts = opts || {};
+    const rec = {
+      by: this.uid, t: Date.now(), reason: (opts.reason || '').slice(0, 200),
+      permanent: !!opts.permanent, until: opts.permanent ? 0 : Date.now() + (opts.days || 7) * 864e5,
+    };
+    const r = await this.put('bans/' + uid, rec);
+    const ok = !!(r && !r.error && r.name);
+    if (ok) { await this.del('scores/' + uid); this._bansAt = 0; this.rowsAt = 0; }
+    return ok;
+  },
+  async unban(uid) { const r = await this.del('bans/' + uid); this._bansAt = 0; this.rowsAt = 0; return !(r && r.error); },
+
+  // admin → founder'a kalıcı ban isteği
+  async requestPermBan(uid, reason) { const r = await this.put('ban_requests/' + uid, { by: this.uid, reason: (reason || '').slice(0, 200), t: Date.now() }); return !!(r && !r.error && r.name); },
+  async listBanReqs() { try { const r = await fetch(this.base() + '/ban_requests?pageSize=100', { headers: this.hdr() }).then(x => x.json()); return (r.documents || []).map(d => ({ id: d.name.split('/').pop(), ...this.dec(d) })); } catch (e) { return []; } },
+  async clearBanReq(uid) { await this.del('ban_requests/' + uid); },
+
+  // admin başvurusu
+  async applyAdmin(reason) { const r = await this.put('admin_requests/' + this.uid, { name: (save.name || 'Pilot').slice(0, 16), reason: (reason || '').slice(0, 300), t: Date.now() }); return !!(r && !r.error && r.name); },
+  async listAdminReqs() { try { const r = await fetch(this.base() + '/admin_requests?pageSize=100', { headers: this.hdr() }).then(x => x.json()); return (r.documents || []).map(d => ({ id: d.name.split('/').pop(), ...this.dec(d) })); } catch (e) { return []; } },
+  async approveAdmin(uid, name) { const r = await this.put('admins/' + uid, { name: (name || 'Admin').slice(0, 16), t: Date.now() }); const ok = !!(r && !r.error && r.name); if (ok) { await this.del('admin_requests/' + uid); this.admins = null; } return ok; },
+  async rejectAdmin(uid) { await this.del('admin_requests/' + uid); },
+  async listAdmins() { try { const r = await fetch(this.base() + '/admins?pageSize=300', { headers: this.hdr() }).then(x => x.json()); return (r.documents || []).map(d => ({ id: d.name.split('/').pop(), ...this.dec(d) })); } catch (e) { return []; } },
+  async removeAdmin(uid) { await this.del('admins/' + uid); this.admins = null; },
+
+  // hata bildirimi
+  async sendReport(type, text) { return await this.create('reports', { type: type, text: (text || '').slice(0, 500), name: (save.name || 'Pilot').slice(0, 16), uid: this.uid, status: 'open', t: Date.now() }); },
+  async listReports() { try { const r = await fetch(this.base() + '/reports?pageSize=100', { headers: this.hdr() }).then(x => x.json()); return (r.documents || []).map(d => ({ id: d.name.split('/').pop(), ...this.dec(d) })).sort((a, b) => (b.t || 0) - (a.t || 0)); } catch (e) { return []; } },
+  async resolveReport(id) { await this.del('reports/' + id); },
+
+  // destek sohbeti (ticket = uid başına)
+  async openTicket() { await this.put('tickets/' + this.uid, { name: (save.name || 'Pilot').slice(0, 16), uid: this.uid, status: 'open', t: Date.now() }); },
+  async ticketSend(uid, from, text) { return await this.create('tickets/' + uid + '/messages', { from: from, name: (save.name || 'Pilot').slice(0, 16), text: (text || '').slice(0, 500), t: Date.now() }); },
+  async ticketMsgs(uid) { try { const r = await fetch(this.base() + '/tickets/' + uid + '/messages?pageSize=100', { headers: this.hdr() }).then(x => x.json()); return (r.documents || []).map(d => this.dec(d)).sort((a, b) => (a.t || 0) - (b.t || 0)); } catch (e) { return []; } },
+  async listTickets() { try { const r = await fetch(this.base() + '/tickets?pageSize=100', { headers: this.hdr() }).then(x => x.json()); return (r.documents || []).map(d => ({ id: d.name.split('/').pop(), ...this.dec(d) })).sort((a, b) => (b.t || 0) - (a.t || 0)); } catch (e) { return []; } },
   // ---- düşük seviye Firestore yardımcıları (odalar + turnuva + bulut) ----
   base() { const c = this.cfg(); return 'https://firestore.googleapis.com/v1/projects/' + c.projectId + '/databases/(default)/documents'; },
   hdr() { return { 'Content-Type': 'application/json', Authorization: 'Bearer ' + this.token }; },
@@ -311,7 +403,7 @@ const FB = {
   async list(coll) { const c = this.cfg(); if (!c || !this.ok) return []; try { const r = await fetch(this.base() + '/' + coll + '?pageSize=20', { headers: this.hdr() }).then(x => x.json()); return (r.documents || []).map(d => ({ id: d.name.split('/').pop(), ...this.dec(d) })); } catch (e) { return []; } },
   // ---- turnuva skor tablosu (günlük/haftalık ayrı koleksiyon) ----
   async submitTournament(sc) {
-    const c = this.cfg(); if (!c || !this.ok || !sc) return;
+    const c = this.cfg(); if (!c || !this.ok || !sc || this.banned) return;
     const day = Math.floor(Date.now() / 864e5), week = Math.floor(day / 7);
     for (const coll of ['t_day_' + day, 't_week_' + week]) {
       const cur = await this.get(coll + '/' + this.uid);
@@ -405,6 +497,11 @@ function mergeCloud(cl) {
 // oturum açılınca bulutu çek + birleştir; sonra kendi güncel kaydını buluta yaz
 FB.init().then(async () => {
   if (!FB.ok) return;
+  // rol tespiti (founder / admin / user) + ban durumu
+  await FB.detectRole();
+  FB.banned = await FB.isBanned(FB.uid);
+  if (FB.banned && typeof popup === 'function') setTimeout(() => popup('🚫 Hesabın yasaklandı — skorların kaydedilmiyor', '#ff6b6b'), 1200);
+  if (typeof window.refreshStaffUI === 'function') window.refreshStaffUI(); // panel butonunu role göre göster
   const cl = await FB.cloudLoad();
   mergeCloud(cl);
   await FB.ensureInviteCode();           // davet kodumu garanti et
@@ -2615,6 +2712,8 @@ function nearMissCheck(it, prevZ) {
 }
 function onHit(item) {
   release(item);
+  // FOUNDER god mode (yalnız TEST panelinden açılır): ölümsüzlük
+  if (window.__god) { sparkBurst(playerGroup.position, 6); SFX.near(); vib(10); return; }
   combo = 0; comboT = 0;
   if (fx.shield > 0 || fx.turbo > 0) {
     sparkBurst(playerGroup.position, 6);
@@ -3138,3 +3237,317 @@ setTimeout(() => {
   if (sp) sp.classList.add('gone');
   setTimeout(() => { if (sp) sp.style.display = 'none'; if (!save.name) openNameModal(); }, 650);
 }, 2600);
+
+
+// ==================== v6.2 HELP & STAFF (rol tabanlı) ====================
+(function () {
+  const st = document.createElement('style');
+  st.textContent =
+    '#helpBtn{position:fixed;right:12px;top:50%;transform:translateY(-50%);z-index:66;width:46px;height:46px;border-radius:50%;' +
+    'background:linear-gradient(135deg,#2f6fe0,#1a3a8f);color:#fff;border:2px solid #9ec2ff;font:800 22px/1 "Segoe UI";cursor:pointer;' +
+    'box-shadow:0 3px 12px rgba(0,0,0,.5);display:none}' +
+    '#staffBtn{position:fixed;left:10px;top:52px;z-index:66;padding:7px 11px;border-radius:12px;border:2px solid #ffd23a;color:#fff;' +
+    'font:700 13px/1 "Segoe UI";cursor:pointer;background:linear-gradient(135deg,#e11d38,#8f0d20);box-shadow:0 3px 12px rgba(0,0,0,.5);display:none}' +
+    '.mM{position:fixed;inset:0;z-index:230;display:none;align-items:center;justify-content:center;background:rgba(3,1,10,.9)}' +
+    '.mM.on{display:flex}' +
+    '.mC{width:min(94vw,470px);max-height:88vh;overflow-y:auto;background:#120a22;border:2px solid #3a2a5a;border-radius:18px;padding:16px;color:#fff}' +
+    '.mC h2{text-align:center;font:800 18px/1.2 "Segoe UI";margin-bottom:10px}' +
+    '.mBtn{width:100%;text-align:left;margin:6px 0;padding:12px 13px;border:none;border-radius:11px;cursor:pointer;font:700 14px "Segoe UI";color:#fff;background:#241a3a}' +
+    '.mBtn:active{transform:scale(.98)}' +
+    '.mTa{width:100%;min-height:90px;border-radius:10px;border:1px solid #3a2a5a;background:#0c0718;color:#fff;padding:10px;font:400 14px "Segoe UI";resize:vertical}' +
+    '.mClose{width:100%;margin-top:12px;padding:11px;border:2px solid #445;border-radius:11px;background:transparent;color:#ccd;font:700 14px "Segoe UI";cursor:pointer}' +
+    '.chatMsg{max-width:82%;margin:5px 0;padding:8px 11px;border-radius:12px;font-size:13px;line-height:1.4;word-wrap:break-word}' +
+    '.chatMsg.me{background:#2f6fe0;margin-left:auto;border-bottom-right-radius:3px}' +
+    '.chatMsg.them{background:#8f0d20;border-bottom-left-radius:3px}' +
+    '.chatMsg.bot{background:#333;border-bottom-left-radius:3px;font-style:italic}' +
+    '.fbadge.b-admin{background:#1a5fd0}.fname.b-admin{color:#6fb0ff}';
+  document.head.appendChild(st);
+
+  const elc = (tag, css, txt) => { const e = document.createElement(tag); if (css) e.style.cssText = css; if (txt != null) e.textContent = txt; return e; };
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const fmtT = t => { try { return new Date(t).toLocaleString(); } catch (e) { return ''; } };
+  function makeModal() {
+    const w = elc('div'); w.className = 'mM';
+    const card = elc('div'); card.className = 'mC';
+    const h = elc('h2'); const body = elc('div', 'font-size:13px');
+    const close = elc('button', null, 'KAPAT'); close.className = 'mClose';
+    close.onclick = () => w.classList.remove('on');
+    w.onclick = e => { if (e.target === w) w.classList.remove('on'); };
+    card.appendChild(h); card.appendChild(body); card.appendChild(close);
+    w.appendChild(card); document.body.appendChild(w);
+    return { w: w, h: h, body: body, open: () => w.classList.add('on'), hide: () => w.classList.remove('on') };
+  }
+  const mBtn = (txt, bg, fn) => { const b = elc('button', bg ? 'background:' + bg : null, txt); b.className = 'mBtn'; b.onclick = fn; return b; };
+
+  // ===== HELP butonu (herkese açık) =====
+  const helpBtn = elc('button', null, '?'); helpBtn.id = 'helpBtn';
+  document.body.appendChild(helpBtn);
+  const hM = makeModal();
+  helpBtn.onclick = () => { SFX.ui && SFX.ui(); helpMenu(); hM.open(); };
+
+  function helpMenu() {
+    hM.h.textContent = '❓ YARDIM';
+    hM.body.innerHTML = '';
+    hM.body.appendChild(mBtn('🎮 Nasıl oynanır?', '#2f6fe0', howTo));
+    hM.body.appendChild(mBtn('🐞 Hata bildir', '#c2461f', bugReport));
+    hM.body.appendChild(mBtn('💬 Öneri / Destek', '#2ea86a', support));
+    if (FB.ok && FB.role === 'user') hM.body.appendChild(mBtn('🛡 Admin olmak için başvur', '#5a4a7a', applyAdminForm));
+    hM.body.appendChild(mBtn('📋 UID\'imi göster (geçici)', '#444', showMyUid));
+  }
+  function showMyUid() {
+    const id = FB.uid || '(giriş yok — internete bağlan)';
+    try { navigator.clipboard && navigator.clipboard.writeText(id); } catch (e) {}
+    hM.h.textContent = '📋 UID';
+    hM.body.innerHTML = '<div style="background:#0c0718;border-radius:10px;padding:12px;word-break:break-all;font-size:12px"><b>UID:</b><br>' + esc(id) + '<br><br><b>Rol:</b> ' + esc(FB.role) + '<br><span style="color:#889">(panoya kopyalandı — kurucuya ver)</span></div>';
+    hM.body.appendChild(mBtn('← Geri', '#333', helpMenu));
+  }
+  function howTo() {
+    hM.h.textContent = '🎮 NASIL OYNANIR';
+    hM.body.innerHTML =
+      '<div style="line-height:1.7;font-size:13.5px">' +
+      '🚀 <b>Amaç:</b> roketini olabildiğince uzağa uçur, hiçbir şeye çarpma!<br><br>' +
+      '👉 <b>Kontrol:</b> Parmağını kaldırmadan <b>sürükle</b> — sağa/sola şerit değiştir, yukarı/aşağı yüksel-alçal (Subway Surfers gibi).<br><br>' +
+      '☄️ Asteroit, lazer kapıları ve sütunlardan sıyrıl.<br>' +
+      '🪙 Altın topla, GARAJ\'dan roket ve yükseltme al.<br>' +
+      '🧲 Güçlendirmeler: Mıknatıs, Kalkan, 2x Puan, Turbo.<br>' +
+      '🛸 Belirli mesafede UFO boss gelir — hareketlerinden kaç.<br>' +
+      '🏆 Skor tablosu, turnuvalar, çok oyunculu odalar.<br>' +
+      '🛠️ ROKET LAB: kendi roketini parça parça yap.<br><br>' +
+      '💡 Günlük seri ödülünü kaçırma, şans kutusunu aç!</div>';
+    hM.body.appendChild(mBtn('← Geri', '#333', helpMenu));
+  }
+  function formView(title, ph, sendLabel, onSend) {
+    hM.h.textContent = title; hM.body.innerHTML = '';
+    const ta = elc('textarea'); ta.className = 'mTa'; ta.placeholder = ph; hM.body.appendChild(ta);
+    const send = mBtn(sendLabel, '#2ea86a', async () => {
+      const txt = ta.value.trim();
+      if (txt.length < 3) { popup && popup('Lütfen biraz daha yaz', '#ffb37a'); return; }
+      send.textContent = '...'; send.disabled = true; await onSend(txt);
+    });
+    hM.body.appendChild(send);
+    hM.body.appendChild(mBtn('← Geri', '#333', helpMenu));
+    setTimeout(() => ta.focus(), 100);
+  }
+  function bugReport() {
+    if (!FB.ok) { popup && popup('İnternet gerekli', '#ffb37a'); return; }
+    formView('🐞 HATA BİLDİR', 'Lütfen düzeltilmesini istediğin şeyi yaz...', 'Gönder', async txt => {
+      await FB.sendReport('bug', txt);
+      hM.body.innerHTML = '<div style="text-align:center;padding:20px">✅ Teşekkürler!<br>Bildirimin admin paneline düştü.</div>';
+      hM.body.appendChild(mBtn('← Geri', '#333', helpMenu));
+    });
+  }
+  function applyAdminForm() {
+    if (!FB.ok) { popup && popup('İnternet gerekli', '#ffb37a'); return; }
+    formView('🛡 ADMIN BAŞVURUSU', 'Neden admin olmak istiyorsun? Kendini tanıt...', 'Başvur', async txt => {
+      await FB.applyAdmin(txt);
+      hM.body.innerHTML = '<div style="text-align:center;padding:20px">✅ Başvurun gönderildi!<br>Kurucu inceleyip karar verecek.</div>';
+      hM.body.appendChild(mBtn('← Geri', '#333', helpMenu));
+    });
+  }
+
+  // ===== Destek sohbeti =====
+  let supPoll = null, supBot = false, supStart = 0;
+  function support() {
+    if (!FB.ok) { popup && popup('İnternet gerekli', '#ffb37a'); return; }
+    hM.h.textContent = '💬 DESTEK'; hM.body.innerHTML = '';
+    const log = elc('div', 'height:46vh;overflow-y:auto;background:#0c0718;border-radius:10px;padding:8px;margin-bottom:8px');
+    const rowW = elc('div', 'display:flex;gap:6px');
+    const inp = elc('input'); inp.style.cssText = 'flex:1;border-radius:10px;border:1px solid #3a2a5a;background:#0c0718;color:#fff;padding:10px;font:400 14px "Segoe UI"'; inp.placeholder = 'Mesaj yaz...';
+    const sendB = elc('button', 'background:#2ea86a;color:#fff;border:none;border-radius:10px;padding:0 14px;font:700 16px "Segoe UI";cursor:pointer', '➤');
+    rowW.appendChild(inp); rowW.appendChild(sendB);
+    hM.body.appendChild(log); hM.body.appendChild(rowW);
+    hM.body.appendChild(mBtn('← Geri', '#333', () => { stopSup(); helpMenu(); }));
+    supBot = false; supStart = Date.now(); FB.openTicket();
+    async function rf() {
+      const msgs = await FB.ticketMsgs(FB.uid);
+      log.innerHTML = ''; let staff = false;
+      for (const m of msgs) {
+        if (m.from === 'admin') staff = true;
+        const d = elc('div'); d.className = 'chatMsg ' + (m.from === 'user' ? 'me' : (m.from === 'bot' ? 'bot' : 'them'));
+        d.textContent = (m.from === 'admin' ? '🛡 ' : (m.from === 'bot' ? '🤖 ' : '')) + m.text;
+        log.appendChild(d);
+      }
+      log.scrollTop = log.scrollHeight;
+      if (!staff && !supBot && Date.now() - supStart > 60000 && msgs.some(m => m.from === 'user')) {
+        supBot = true;
+        await FB.ticketSend(FB.uid, 'bot', 'Merhaba! Admin şu an müsait değil ama mesajın kaydedildi, en kısa sürede dönecek. Acil bir hata için YARDIM → Hata bildir\'i de kullanabilirsin. 🚀');
+        rf();
+      }
+    }
+    async function doSend() { const t = inp.value.trim(); if (!t) return; inp.value = ''; await FB.ticketSend(FB.uid, 'user', t); rf(); }
+    sendB.onclick = doSend; inp.addEventListener('keydown', e => { if (e.key === 'Enter') doSend(); });
+    rf(); stopSup(); supPoll = setInterval(rf, 4000);
+  }
+  function stopSup() { if (supPoll) { clearInterval(supPoll); supPoll = null; } }
+
+  // ===== STAFF paneli =====
+  const staffBtn = elc('button', null, '🛡 ADMIN'); staffBtn.id = 'staffBtn';
+  document.body.appendChild(staffBtn);
+  const sM = makeModal();
+  staffBtn.onclick = () => { SFX.ui && SFX.ui(); staffMenu(); sM.open(); };
+  function staffMenu() {
+    const founder = FB.role === 'founder';
+    sM.h.textContent = founder ? '👑 FOUNDER PANEL' : '🛡 ADMIN PANEL';
+    sM.body.innerHTML = '';
+    sM.body.appendChild(mBtn('🐞 Hata bildirimleri', '#c2461f', viewReports));
+    sM.body.appendChild(mBtn('💬 Destek talepleri', '#2ea86a', viewTickets));
+    sM.body.appendChild(mBtn('🔨 Ban paneli', '#8f0d20', banPanel));
+    if (founder) {
+      sM.body.appendChild(mBtn('🛡 Admin başvuruları', '#5a4a7a', viewAdminReqs));
+      sM.body.appendChild(mBtn('👥 Adminleri yönet', '#3a5a8a', viewAdmins));
+      sM.body.appendChild(mBtn('📥 Kalıcı ban istekleri', '#a03a2a', viewBanReqs));
+    }
+    sM.body.appendChild(mBtn('📋 UID / rol göster', '#2f6fe0', showUid));
+  }
+  async function viewReports() {
+    sM.h.textContent = '🐞 HATA BİLDİRİMLERİ'; sM.body.innerHTML = 'Yükleniyor…';
+    const list = await FB.listReports(); sM.body.innerHTML = '';
+    if (!list.length) sM.body.appendChild(elc('div', 'color:#889;padding:10px', 'Bildirim yok.'));
+    list.forEach(r => {
+      const c = elc('div', 'background:#1a1230;border-radius:10px;padding:10px;margin:6px 0');
+      c.innerHTML = '<div style="font-size:11px;color:#889">' + esc(r.name || '?') + ' · ' + fmtT(r.t) + '</div><div style="margin:4px 0">' + esc(r.text || '') + '</div>';
+      if (FB.role === 'founder') { const d = elc('button', 'background:#2ea86a;color:#fff;border:none;border-radius:8px;padding:6px 10px;font:700 12px "Segoe UI";cursor:pointer', '✓ Sil'); d.onclick = async () => { await FB.resolveReport(r.id); viewReports(); }; c.appendChild(d); }
+      sM.body.appendChild(c);
+    });
+    sM.body.appendChild(mBtn('← Geri', '#333', staffMenu));
+  }
+  let tPoll = null;
+  async function viewTickets() {
+    sM.h.textContent = '💬 DESTEK TALEPLERİ'; sM.body.innerHTML = 'Yükleniyor…';
+    const list = await FB.listTickets(); sM.body.innerHTML = '';
+    if (!list.length) sM.body.appendChild(elc('div', 'color:#889;padding:10px', 'Talep yok.'));
+    list.forEach(t => sM.body.appendChild(mBtn('💬 ' + (t.name || '?'), '#241a3a', () => ticketChat(t))));
+    sM.body.appendChild(mBtn('← Geri', '#333', staffMenu));
+  }
+  function ticketChat(t) {
+    const tuid = t.uid || t.id;
+    sM.h.textContent = '💬 ' + (t.name || '?'); sM.body.innerHTML = '';
+    const log = elc('div', 'height:44vh;overflow-y:auto;background:#0c0718;border-radius:10px;padding:8px;margin-bottom:8px');
+    const rowW = elc('div', 'display:flex;gap:6px');
+    const inp = elc('input'); inp.style.cssText = 'flex:1;border-radius:10px;border:1px solid #3a2a5a;background:#0c0718;color:#fff;padding:10px;font:400 14px "Segoe UI"'; inp.placeholder = 'Cevap yaz...';
+    const sb = elc('button', 'background:#8f0d20;color:#fff;border:none;border-radius:10px;padding:0 14px;font:700 16px "Segoe UI";cursor:pointer', '➤');
+    rowW.appendChild(inp); rowW.appendChild(sb);
+    sM.body.appendChild(log); sM.body.appendChild(rowW);
+    sM.body.appendChild(mBtn('← Geri', '#333', () => { stopT(); viewTickets(); }));
+    async function rf() {
+      const msgs = await FB.ticketMsgs(tuid); log.innerHTML = '';
+      for (const m of msgs) { const d = elc('div'); d.className = 'chatMsg ' + (m.from === 'admin' ? 'me' : (m.from === 'bot' ? 'bot' : 'them')); d.textContent = (m.from === 'user' ? '👤 ' : (m.from === 'bot' ? '🤖 ' : '')) + m.text; log.appendChild(d); }
+      log.scrollTop = log.scrollHeight;
+    }
+    async function send() { const v = inp.value.trim(); if (!v) return; inp.value = ''; await FB.ticketSend(tuid, 'admin', v); rf(); }
+    sb.onclick = send; inp.addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
+    rf(); stopT(); tPoll = setInterval(rf, 4000);
+  }
+  function stopT() { if (tPoll) { clearInterval(tPoll); tPoll = null; } }
+  async function banPanel() {
+    sM.h.textContent = '🔨 BAN PANELİ'; sM.body.innerHTML = 'Yükleniyor…';
+    FB.rowsAt = 0; FB._bansAt = 0;
+    const rows = (await FB.fetchTop()) || []; const bans = await FB.fetchBans(); const admins = await FB.fetchAdmins();
+    sM.body.innerHTML = '';
+    sM.body.appendChild(elc('div', 'color:#9aa;margin:2px 0 6px', 'SKOR TABLOSU (' + rows.length + ')'));
+    rows.slice(0, 60).forEach(r => {
+      const prot = (r.id === FB.uid) || (r.id === FOUNDER_UID) || admins.has(r.id);
+      const line = elc('div', 'display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #2a2140');
+      const nm = elc('span', 'flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' + (r.id === FB.uid ? ';color:#ffd54d' : ''));
+      nm.textContent = (r.founder ? '👑 ' : (r.admin ? '🛡 ' : '')) + r.name + ' — ' + fmt(r.s) + (r.id === FB.uid ? ' (SEN)' : '');
+      line.appendChild(nm);
+      if (!prot) {
+        const bb = elc('button', 'background:#8f0d20;color:#fff;border:none;border-radius:8px;padding:6px 9px;font:700 12px "Segoe UI";cursor:pointer', '🔨');
+        bb.onclick = async () => {
+          let perm = false;
+          if (FB.role === 'founder') perm = confirm('KALICI ban mı?\nTamam = kalıcı · İptal = 7 günlük geçici');
+          const reason = prompt('Ban sebebi (opsiyonel):', '') || '';
+          bb.textContent = '…';
+          const ok = await FB.ban(r.id, { permanent: perm, days: 7, reason: reason });
+          popup && popup(ok ? ('🔨 Banlandı (' + (perm ? 'kalıcı' : '7 gün') + ')') : '❌ Ban başarısız (yetki?)', ok ? '#ff8a8a' : '#ff5555');
+          banPanel();
+        };
+        line.appendChild(bb);
+        if (FB.role === 'admin') {
+          const pr = elc('button', 'background:#a03a2a;color:#fff;border:none;border-radius:8px;padding:6px 8px;font:700 11px "Segoe UI";cursor:pointer;margin-left:4px', 'kalıcı iste');
+          pr.onclick = async () => { const reason = prompt('Kurucuya kalıcı ban isteği — sebep:', '') || ''; if (!reason) return; const ok = await FB.requestPermBan(r.id, reason); popup && popup(ok ? '📥 İstek gönderildi' : '❌ Gönderilemedi', ok ? '#9dff70' : '#ff5555'); };
+          line.appendChild(pr);
+        }
+      } else { line.appendChild(elc('span', 'color:#667;font-size:11px', r.id === FB.uid ? '(sen)' : (r.founder ? '(kurucu)' : '(admin)'))); }
+      sM.body.appendChild(line);
+    });
+    const active = [...bans.entries()].filter(e => FB.banActive(e[1]));
+    sM.body.appendChild(elc('div', 'color:#9aa;margin:12px 0 6px', 'BANLILAR (' + active.length + ')'));
+    if (!active.length) sM.body.appendChild(elc('div', 'color:#667', 'Aktif ban yok.'));
+    active.forEach(e => {
+      const id = e[0], b = e[1];
+      const line = elc('div', 'display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #2a2140');
+      const nm = elc('span', 'flex:1;overflow:hidden;font-size:11px;color:#c99');
+      nm.textContent = id + ' · ' + (b.permanent ? 'KALICI' : ('⏳' + Math.ceil((b.until - Date.now()) / 864e5) + 'g')) + (b.reason ? (' · ' + b.reason) : '');
+      const ub = elc('button', 'background:#166b3a;color:#fff;border:none;border-radius:8px;padding:6px 9px;font:700 12px "Segoe UI";cursor:pointer', '♻️');
+      ub.onclick = async () => { ub.textContent = '…'; await FB.unban(id); popup && popup('♻️ Ban kaldırıldı', '#9dff70'); banPanel(); };
+      line.appendChild(nm); line.appendChild(ub); sM.body.appendChild(line);
+    });
+    sM.body.appendChild(mBtn('← Geri', '#333', staffMenu));
+  }
+  async function viewAdminReqs() {
+    sM.h.textContent = '🛡 ADMIN BAŞVURULARI'; sM.body.innerHTML = 'Yükleniyor…';
+    const list = await FB.listAdminReqs(); sM.body.innerHTML = '';
+    if (!list.length) sM.body.appendChild(elc('div', 'color:#889;padding:10px', 'Başvuru yok.'));
+    list.forEach(r => {
+      const c = elc('div', 'background:#1a1230;border-radius:10px;padding:10px;margin:6px 0');
+      c.innerHTML = '<div style="font-weight:700">' + esc(r.name || '?') + '</div><div style="font-size:11px;color:#889">' + fmtT(r.t) + '</div><div style="margin:6px 0">' + esc(r.reason || '') + '</div><div style="font-size:10px;color:#667">uid: ' + esc(r.id) + '</div>';
+      const row = elc('div', 'display:flex;gap:6px;margin-top:6px');
+      const ap = elc('button', 'flex:1;background:#2ea86a;color:#fff;border:none;border-radius:8px;padding:8px;font:700 12px "Segoe UI";cursor:pointer', '✓ Onayla');
+      ap.onclick = async () => { ap.textContent = '…'; const ok = await FB.approveAdmin(r.id, r.name); popup && popup(ok ? '✓ Admin yapıldı' : '❌ Olmadı', ok ? '#9dff70' : '#ff5555'); viewAdminReqs(); };
+      const rj = elc('button', 'flex:1;background:#8f0d20;color:#fff;border:none;border-radius:8px;padding:8px;font:700 12px "Segoe UI";cursor:pointer', '✕ Reddet');
+      rj.onclick = async () => { await FB.rejectAdmin(r.id); viewAdminReqs(); };
+      row.appendChild(ap); row.appendChild(rj); c.appendChild(row); sM.body.appendChild(c);
+    });
+    sM.body.appendChild(mBtn('← Geri', '#333', staffMenu));
+  }
+  async function viewAdmins() {
+    sM.h.textContent = '👥 ADMİNLER'; sM.body.innerHTML = 'Yükleniyor…';
+    const list = await FB.listAdmins(); sM.body.innerHTML = '';
+    if (!list.length) sM.body.appendChild(elc('div', 'color:#889;padding:10px', 'Henüz admin yok.'));
+    list.forEach(a => {
+      const line = elc('div', 'display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #2a2140');
+      const nm = elc('span', 'flex:1'); nm.innerHTML = '<span class="fbadge b-admin">🛡</span> ' + esc(a.name || 'Admin') + '<div style="font-size:10px;color:#667">' + esc(a.id) + '</div>';
+      const rm = elc('button', 'background:#8f0d20;color:#fff;border:none;border-radius:8px;padding:6px 10px;font:700 12px "Segoe UI";cursor:pointer', 'çıkar');
+      rm.onclick = async () => { if (!confirm('Adminlikten çıkar?')) return; await FB.removeAdmin(a.id); viewAdmins(); };
+      line.appendChild(nm); line.appendChild(rm); sM.body.appendChild(line);
+    });
+    sM.body.appendChild(mBtn('← Geri', '#333', staffMenu));
+  }
+  async function viewBanReqs() {
+    sM.h.textContent = '📥 KALICI BAN İSTEKLERİ'; sM.body.innerHTML = 'Yükleniyor…';
+    const list = await FB.listBanReqs(); sM.body.innerHTML = '';
+    if (!list.length) sM.body.appendChild(elc('div', 'color:#889;padding:10px', 'İstek yok.'));
+    list.forEach(r => {
+      const c = elc('div', 'background:#1a1230;border-radius:10px;padding:10px;margin:6px 0');
+      c.innerHTML = '<div style="font-size:11px;color:#889">isteyen: ' + esc(r.by || '?') + ' · ' + fmtT(r.t) + '</div><div style="margin:4px 0">Hedef uid: ' + esc(r.id) + '</div><div style="color:#ffb37a">Sebep: ' + esc(r.reason || '') + '</div>';
+      const row = elc('div', 'display:flex;gap:6px;margin-top:6px');
+      const ap = elc('button', 'flex:1;background:#8f0d20;color:#fff;border:none;border-radius:8px;padding:8px;font:700 12px "Segoe UI";cursor:pointer', '🔨 Kalıcı banla');
+      ap.onclick = async () => { ap.textContent = '…'; const ok = await FB.ban(r.id, { permanent: true, reason: r.reason }); await FB.clearBanReq(r.id); popup && popup(ok ? '🔨 Kalıcı banlandı' : '❌ Olmadı', ok ? '#ff8a8a' : '#ff5555'); viewBanReqs(); };
+      const dz = elc('button', 'flex:1;background:#444;color:#fff;border:none;border-radius:8px;padding:8px;font:700 12px "Segoe UI";cursor:pointer', '✕ Yoksay');
+      dz.onclick = async () => { await FB.clearBanReq(r.id); viewBanReqs(); };
+      row.appendChild(ap); row.appendChild(dz); c.appendChild(row); sM.body.appendChild(c);
+    });
+    sM.body.appendChild(mBtn('← Geri', '#333', staffMenu));
+  }
+  function showUid() {
+    sM.h.textContent = '📋 UID / ROL'; sM.body.innerHTML = '';
+    const id = FB.uid || '(giriş yok)';
+    try { navigator.clipboard && navigator.clipboard.writeText(id); } catch (e) {}
+    const box = elc('div', 'background:#0c0718;border-radius:10px;padding:12px;word-break:break-all;font-size:12px');
+    box.innerHTML = '<b>UID:</b><br>' + esc(id) + '<br><br><b>Rol:</b> ' + esc(FB.role) + (FB.uid === FOUNDER_UID ? ' 👑' : '') + '<br><span style="color:#889">(panoya kopyalandı)</span>';
+    sM.body.appendChild(box);
+    sM.body.appendChild(mBtn('← Geri', '#333', staffMenu));
+  }
+
+  // ===== butonların menüde görünmesi (oyunda gizli) =====
+  window.refreshStaffUI = function () { staffBtn.textContent = FB.role === 'founder' ? '👑 FOUNDER' : '🛡 ADMIN'; };
+  setInterval(function () {
+    const onMenu = (typeof state !== 'undefined' && typeof S !== 'undefined' && state === S.MENU);
+    helpBtn.style.display = onMenu ? 'block' : 'none';
+    staffBtn.style.display = (onMenu && FB.ok && FB.isStaff()) ? 'block' : 'none';
+    if (FB.ok && FB.isStaff()) staffBtn.textContent = FB.role === 'founder' ? '👑 FOUNDER' : '🛡 ADMIN';
+    if (!hM.w.classList.contains('on')) stopSup();
+    if (!sM.w.classList.contains('on')) stopT();
+  }, 500);
+})();
