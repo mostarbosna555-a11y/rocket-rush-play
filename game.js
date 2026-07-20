@@ -368,6 +368,24 @@ const FB = {
     this.ok = false; this.uid = null; this.token = null; this.role = 'user'; this.admins = null; this._bansAt = 0;
     await this.init(); await this.detectRole();
   },
+  // oturum token'ını yenile (id_token 1 saatte dolar; panel açılınca çağrılır)
+  async refreshToken() {
+    try {
+      const c = this.cfg(); if (!c) return false;
+      const stored = JSON.parse(localStorage.getItem('rr_fb') || 'null');
+      if (!stored || !stored.rt) return false;
+      const r = await fetch('https://securetoken.googleapis.com/v1/token?key=' + c.apiKey, {
+        method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'grant_type=refresh_token&refresh_token=' + encodeURIComponent(stored.rt),
+      }).then(x => x.json());
+      if (r.id_token) {
+        this.uid = r.user_id; this.token = r.id_token; this.ok = true;
+        localStorage.setItem('rr_fb', JSON.stringify({ rt: r.refresh_token }));
+        return true;
+      }
+    } catch (e) {}
+    return false;
+  },
 
   // ban uygula: opts { permanent:bool, days:int, reason:str }
   async ban(uid, opts) {
@@ -3306,7 +3324,7 @@ setTimeout(() => {
   const helpBtn = elc('button', null, '?'); helpBtn.id = 'helpBtn';
   document.body.appendChild(helpBtn);
   const hM = makeModal();
-  helpBtn.onclick = () => { SFX.ui && SFX.ui(); helpMenu(); hM.open(); };
+  helpBtn.onclick = async () => { SFX.ui && SFX.ui(); await FB.refreshToken(); helpMenu(); hM.open(); };
 
   function helpMenu() {
     hM.h.textContent = '❓ YARDIM';
@@ -3435,7 +3453,7 @@ setTimeout(() => {
   const staffBtn = elc('button', null, '🛡 ADMIN'); staffBtn.id = 'staffBtn';
   document.body.appendChild(staffBtn);
   const sM = makeModal();
-  staffBtn.onclick = () => { SFX.ui && SFX.ui(); staffMenu(); sM.open(); };
+  staffBtn.onclick = async () => { SFX.ui && SFX.ui(); await FB.refreshToken(); await FB.detectRole(); staffMenu(); sM.open(); };
   function staffMenu() {
     const founder = FB.role === 'founder';
     sM.h.textContent = founder ? '👑 FOUNDER PANEL' : '🛡 ADMIN PANEL';
@@ -3539,7 +3557,7 @@ setTimeout(() => {
   async function viewAdminReqs() {
     sM.h.textContent = '🛡 ADMIN BAŞVURULARI'; sM.body.innerHTML = 'Yükleniyor…';
     const list = await FB.listAdminReqs(); sM.body.innerHTML = '';
-    if (!list.length) sM.body.appendChild(elc('div', 'color:#889;padding:10px', 'Başvuru yok.'));
+    if (!list.length) sM.body.appendChild(elc('div', 'color:#889;padding:10px', 'Başvuru yok.  (rol: ' + FB.role + ' · uid: ' + String(FB.uid || '').slice(0, 8) + '…)'));
     list.forEach(r => {
       const c = elc('div', 'background:#1a1230;border-radius:10px;padding:10px;margin:6px 0');
       c.innerHTML = '<div style="font-weight:700">' + esc(r.name || '?') + '</div><div style="font-size:11px;color:#889">' + fmtT(r.t) + '</div><div style="margin:6px 0">' + esc(r.reason || '') + '</div><div style="font-size:10px;color:#667">uid: ' + esc(r.id) + '</div>';
