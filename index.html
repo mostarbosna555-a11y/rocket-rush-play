@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Rocket Rush</title>
+<!-- ===== PWA / "Ana Ekrana Ekle" (iPhone + Android tam ekran uygulama gibi) ===== -->
+<meta name="theme-color" content="#05010f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Rocket Rush">
+<meta name="description" content="Rocket Rush — sonsuz uzay koşusu. Bir BOSNA GAMES yapımı.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; }
+  html,body { width:100%; height:100%; overflow:hidden; background:#05010f; font-family:'Segoe UI',Arial,sans-serif; touch-action:none; }
+  #game { position:fixed; inset:0; }
+  canvas { display:block; }
+
+  .screen { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:10; color:#fff; }
+  .hidden { display:none !important; }
+
+  /* ===== BOSNA GAMES açılış ekranı ===== */
+  #splash { position:fixed; inset:0; z-index:100; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:radial-gradient(ellipse at 50% 42%, #1a0a14 0%, #0a0308 60%, #050103 100%);
+    transition:opacity .6s ease; }
+  #splash.gone { opacity:0; pointer-events:none; }
+  #splashLogo { width:26vw; height:26vw; border-radius:24%; display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(160deg,#ff3b3b,#b30d1a); box-shadow:0 0 50px rgba(255,50,50,.55), inset 0 -6px 16px rgba(0,0,0,.35);
+    animation:sLogo 1.1s cubic-bezier(.2,.9,.3,1.4) both; }
+  #splashLogo span { font-size:17vw; font-weight:900; color:#fff; text-shadow:0 3px 10px rgba(0,0,0,.45); font-family:Georgia,'Times New Roman',serif; }
+  @keyframes sLogo { 0%{ transform:scale(.2) rotate(-25deg); opacity:0; } 100%{ transform:scale(1) rotate(0); opacity:1; } }
+  #splashName { margin-top:4vh; font-size:9vw; font-weight:900; letter-spacing:3px; color:#fff;
+    animation:sName .7s ease .5s both; }
+  #splashName .gred { color:#ff2b2b; text-shadow:0 0 22px rgba(255,50,50,.7); }
+  @keyframes sName { 0%{ opacity:0; transform:translateY(14px);} 100%{ opacity:1; transform:translateY(0);} }
+  #splashTag { margin-top:1vh; font-size:3.4vw; letter-spacing:8px; color:#8a6; color:#c98; opacity:.75;
+    animation:sName .7s ease .8s both; }
+  #splashBarO { margin-top:5vh; width:52vw; height:5px; background:rgba(255,255,255,.12); border-radius:4px; overflow:hidden; }
+  #splashBar { height:100%; width:0; background:linear-gradient(90deg,#ff3b3b,#ff8a2a); border-radius:4px; animation:sBar 2.2s ease .4s forwards; }
+  @keyframes sBar { to { width:100%; } }
+  /* açılışta ekranı geçen roket + iz */
+  #splashRocket { position:absolute; left:-15vw; bottom:22vh; font-size:11vw; transform:rotate(38deg);
+    filter:drop-shadow(0 0 16px rgba(255,140,50,.7)); animation:sRocket 2.4s cubic-bezier(.5,0,.7,1) .3s both; }
+  @keyframes sRocket {
+    0%   { left:-15vw; bottom:8vh;  opacity:0; transform:rotate(38deg) scale(.7); }
+    15%  { opacity:1; }
+    100% { left:112vw; bottom:78vh; opacity:0; transform:rotate(38deg) scale(1.1); }
+  }
+
+  /* ---------- ANA MENÜ ---------- */
+  #menu { background:radial-gradient(ellipse at 50% 25%, rgba(40,20,110,.55) 0%, rgba(8,2,24,.92) 70%); overflow:hidden; }
+  .menuStar { position:absolute; border-radius:50%; background:#fff; opacity:.7; animation:twinkle 3s ease-in-out infinite; }
+  @keyframes twinkle { 0%,100%{opacity:.15; transform:scale(.7);} 50%{opacity:.9; transform:scale(1.15);} }
+  .menuRocket { font-size:15vw; animation:floaty 3.2s ease-in-out infinite; filter:drop-shadow(0 0 22px rgba(255,140,50,.55)); }
+  @keyframes floaty { 0%,100%{transform:translateY(0) rotate(-4deg);} 50%{transform:translateY(-2vh) rotate(4deg);} }
+  .title { font-size:12vw; font-weight:900; letter-spacing:3px;
+    background:linear-gradient(180deg,#fff3b0 0%,#ffd54d 35%,#ff8a2a 70%,#ff5a1f 100%);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    animation:titleGlow 2.6s ease-in-out infinite; }
+  @keyframes titleGlow {
+    0%,100% { filter:drop-shadow(0 0 10px rgba(255,140,40,.35)); }
+    50%     { filter:drop-shadow(0 0 26px rgba(255,170,60,.75)); }
+  }
+  .subtitle { font-size:4vw; color:#9fb4ff; letter-spacing:5px; margin:.6vh 0 1.6vh; text-transform:uppercase; }
+  #menuRank { font-size:3.8vw; color:#cfd8ff; margin-bottom:.8vh; }
+  #menuRank b { color:#ffd54d; }
+  #rankBarO { width:60vw; height:7px; background:rgba(255,255,255,.12); border-radius:5px; overflow:hidden; margin-bottom:1.6vh; }
+  #rankBar { height:100%; border-radius:5px; background:linear-gradient(90deg,#ffd54d,#ff8a2a); transition:width .6s; }
+
+  /* Lucky Box */
+  #lucky { background:rgba(8,2,24,.9); }
+  #luckyNum { font-size:12vw; font-weight:900; color:#ffd54d; margin:3vh 0;
+    text-shadow:0 0 30px rgba(255,213,77,.6); }
+  #luckyBtn { animation:boxShake .7s ease-in-out infinite; }
+  @keyframes boxShake { 0%,100%{transform:rotate(0);} 20%{transform:rotate(-3deg) scale(1.03);} 60%{transform:rotate(3deg) scale(1.03);} }
+  #goHooks { font-size:3.6vw; color:#9fb4ff; margin-bottom:1.6vh; text-align:center; line-height:1.7; padding:0 5vw; }
+
+  #giftBtn { border:none; border-radius:14px; padding:10px 22px; font-size:4.4vw; font-weight:900; color:#3a2500;
+    background:linear-gradient(180deg,#ffe07a,#ffb020); box-shadow:0 4px 0 #a86e00, 0 8px 20px rgba(255,180,40,.4);
+    margin-bottom:1.6vh; animation:giftPulse 1.4s ease-in-out infinite; }
+  @keyframes giftPulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.06);} }
+
+  .statRow { display:flex; gap:12px; margin-bottom:2vh; }
+  .statCard { background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.16); border-radius:16px;
+    padding:9px 22px; text-align:center; backdrop-filter:blur(6px); box-shadow:0 8px 22px rgba(0,0,0,.35); }
+  .statCard .v { font-size:5.4vw; font-weight:900; color:#ffd54d; }
+  .statCard .l { font-size:2.8vw; color:#9fb4ff; letter-spacing:2px; margin-top:2px; }
+
+  /* görevler paneli */
+  .missionBox { width:86vw; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14); border-radius:16px; padding:10px 14px; margin-bottom:2.2vh; }
+  .missionBox h4 { font-size:3.6vw; color:#9fb4ff; letter-spacing:3px; margin-bottom:6px; text-align:center; }
+  .mItem { margin:7px 0; }
+  .mTxt { display:flex; justify-content:space-between; font-size:3.5vw; color:#e8ecff; font-weight:600; }
+  .mTxt .rw { color:#ffd54d; font-weight:900; }
+  .mBarO { height:8px; background:rgba(255,255,255,.12); border-radius:5px; margin-top:4px; overflow:hidden; }
+  .mBar { height:100%; border-radius:5px; background:linear-gradient(90deg,#3d6cff,#66ccff); transition:width .4s; }
+  .mItem.done .mBar { background:linear-gradient(90deg,#4caf50,#9dff70); }
+  .mItem.done .mTxt { color:#9dff70; }
+
+  .btn { position:relative; overflow:hidden; border:none; border-radius:18px; padding:15px 40px; font-size:6vw; font-weight:900; color:#fff;
+    background:linear-gradient(180deg,#ff9a3a,#e8511a); box-shadow:0 6px 0 #a33107, 0 12px 28px rgba(232,81,26,.4);
+    margin:8px; min-width:64vw; text-align:center; letter-spacing:1px; }
+  .btn::after { content:''; position:absolute; top:0; left:-80%; width:50%; height:100%;
+    background:linear-gradient(100deg,transparent,rgba(255,255,255,.45),transparent);
+    animation:shine 2.8s ease-in-out infinite; }
+  @keyframes shine { 0%{left:-80%;} 55%{left:130%;} 100%{left:130%;} }
+  .btn:active { transform:translateY(4px); box-shadow:0 2px 0 #a33107; }
+  .btn.secondary { background:linear-gradient(180deg,#4d7aff,#2242c8); box-shadow:0 6px 0 #14267a, 0 12px 28px rgba(61,108,255,.35); }
+  .btn.secondary:active { box-shadow:0 2px 0 #14267a; }
+  .btn.small { font-size:4.5vw; padding:12px 24px; min-width:40vw; }
+
+  #settingsBtn { position:absolute; top:calc(env(safe-area-inset-top,0px) + 14px); right:16px; border:none;
+    background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); color:#fff; border-radius:14px;
+    font-size:6vw; padding:6px 12px; z-index:12; }
+
+  /* ---------- AYARLAR ---------- */
+  #settings { background:rgba(5,1,20,.92); }
+  #settings h2 { font-size:8vw; color:#9fb4ff; margin-bottom:3vh; letter-spacing:3px; }
+  .settRow { width:86vw; display:flex; justify-content:space-between; align-items:center;
+    background:rgba(20,20,50,.85); border:2px solid #33407a; border-radius:16px;
+    padding:14px 18px; margin:7px 0; }
+  .settRow .lbl { font-size:4.6vw; font-weight:700; color:#e8ecff; }
+  .settRow .sub { font-size:3.2vw; color:#7f8ac8; margin-top:2px; }
+  .settToggle { border:none; border-radius:12px; padding:10px 18px; font-size:4vw; font-weight:900;
+    color:#fff; min-width:24vw; }
+  .settToggle.on  { background:linear-gradient(180deg,#4caf50,#2e7d32); }
+  .settToggle.off { background:#444a66; }
+  .settToggle.danger { background:linear-gradient(180deg,#e85a5a,#b02a2a); }
+  #settVersion { color:#5b6494; font-size:3.2vw; margin-top:2vh; }
+
+  /* V5: X kapatma, sekmeler, bayrak ızgarası, önizleme */
+  /* FOUNDER rozeti */
+  .fbadge { display:inline-flex; align-items:center; justify-content:center; width:5.2vw; height:5.2vw;
+    margin-right:5px; border-radius:6px; font-size:3.4vw; vertical-align:middle;
+    background:linear-gradient(160deg,#ff3b3b,#b30d1a); box-shadow:0 0 10px rgba(255,50,50,.6);
+    filter:drop-shadow(0 1px 1px rgba(0,0,0,.4)); }
+  .fname { color:#ff4444; font-weight:900; letter-spacing:1px; text-shadow:0 0 10px rgba(255,60,60,.6); }
+  /* rozet renk türleri */
+  .fbadge.b-mod { background:linear-gradient(160deg,#3d8cff,#1650c8); box-shadow:0 0 10px rgba(60,140,255,.6); }
+  .fname.b-mod { color:#5aa0ff; text-shadow:0 0 10px rgba(60,140,255,.6); }
+  .fbadge.b-vip { background:linear-gradient(160deg,#ffd54d,#d99a00); box-shadow:0 0 10px rgba(255,200,60,.6); }
+  .fname.b-vip { color:#ffd54d; text-shadow:0 0 10px rgba(255,200,60,.6); }
+  .fbadge.b-og { background:linear-gradient(160deg,#2bd47a,#0d7a44); box-shadow:0 0 10px rgba(60,220,140,.5); }
+  .fname.b-og { color:#4fe098; text-shadow:0 0 10px rgba(60,220,140,.5); }
+
+  .closeX { position:absolute; top:calc(env(safe-area-inset-top,0px) + 14px); left:16px; z-index:12;
+    border:none; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25); color:#fff;
+    border-radius:14px; font-size:6.5vw; font-weight:900; width:12vw; height:12vw; line-height:1; }
+  .tabBtn { border:none; border-radius:11px; padding:8px 15px; font-size:3.6vw; font-weight:900; color:#9fb4ff;
+    background:rgba(20,20,50,.85); border:2px solid #33407a; margin:0 5px 2vh; }
+  .tabBtn.on { color:#3a2500; background:linear-gradient(180deg,#ffe07a,#ffb020); border-color:#ffb020; }
+  #leadList, #matchList { width:86vw; }
+  .flagBtn { font-size:8vw; background:rgba(20,20,50,.7); border:2px solid #33407a; border-radius:12px;
+    padding:4px 8px; margin:4px; }
+  .flagBtn.sel { border-color:#ffd54d; background:rgba(70,55,10,.8); }
+  #flagGrid { display:flex; flex-wrap:wrap; justify-content:center; max-width:90vw; max-height:32vh; overflow-y:auto; margin:1.5vh 0; }
+  #nameInput { width:70vw; padding:14px; font-size:5.5vw; font-weight:800; text-align:center; color:#fff;
+    background:rgba(20,20,50,.9); border:2px solid #3d6cff; border-radius:14px; outline:none; }
+  #langList { display:flex; flex-wrap:wrap; justify-content:center; max-width:92vw; max-height:60vh; overflow-y:auto; }
+  #preview { background:radial-gradient(ellipse at 50% 40%, rgba(30,20,80,.35) 0%, rgba(5,1,20,.75) 75%); justify-content:flex-end; padding-bottom:8vh; }
+  #prevName { font-size:7vw; font-weight:900; color:#ffd54d; text-shadow:0 2px 12px #000; }
+  #prevDesc { font-size:4vw; color:#cfd8ff; margin-top:1vh; text-shadow:0 2px 8px #000; }
+  #multi .missionBox, #boost .missionBox { text-align:center; }
+
+  /* ROCKET LAB */
+  #lab { background:radial-gradient(ellipse at 50% 30%, rgba(30,20,80,.3) 0%, rgba(5,1,20,.88) 70%); justify-content:flex-end; padding-bottom:2vh; }
+  #labStats { font-size:3.8vw; color:#cfd8ff; text-shadow:0 2px 6px #000; margin-bottom:1vh; text-align:center; }
+  #labRows { width:94vw; max-height:46vh; overflow-y:auto; }
+  .labCat { font-size:3.6vw; font-weight:900; color:#9fb4ff; letter-spacing:2px; margin:6px 0 4px 3vw; }
+  .labRow { display:flex; overflow-x:auto; gap:7px; padding:0 3vw 4px; }
+  .labChip { flex:0 0 auto; min-width:26vw; border:2px solid #33407a; background:rgba(20,20,50,.9);
+    border-radius:12px; padding:8px 10px; color:#fff; display:flex; flex-direction:column; gap:3px; }
+  .labChip b { font-size:3.3vw; } .labChip span { font-size:3vw; color:#ffd54d; }
+  .labChip.own { border-color:#3d6cff; }
+  .labChip.sel { border-color:#ffd54d; background:rgba(70,55,10,.9); }
+
+  /* ---------- SEZON PASS ---------- */
+  #season { justify-content:flex-start; padding-top:calc(env(safe-area-inset-top,0px) + 20px); overflow-y:auto; background:rgba(5,1,20,.92); }
+  #season h2 { font-size:8vw; color:#ffd54d; margin-bottom:.6vh; }
+  #seasonInfo { font-size:3.8vw; color:#9fb4ff; margin-bottom:1.4vh; }
+  #seasonBarO { width:86vw; height:10px; background:rgba(255,255,255,.12); border-radius:6px; overflow:hidden; }
+  #seasonBar { height:100%; border-radius:6px; background:linear-gradient(90deg,#ffd54d,#ff8a2a); transition:width .5s; }
+  #seasonSp { font-size:3.6vw; color:#cfd8ff; margin:1vh 0 1.6vh; }
+  #premiumBtn { border:none; border-radius:14px; padding:12px 24px; font-size:4.4vw; font-weight:900; color:#3a2500;
+    background:linear-gradient(180deg,#ffe07a,#ffb020); box-shadow:0 4px 0 #a86e00; margin-bottom:1.6vh; }
+  #premiumBtn.locked2 { filter:grayscale(.6); opacity:.7; }
+  .tierRow { width:86vw; display:flex; align-items:stretch; gap:8px; margin:4px 0; opacity:.55; }
+  .tierRow.unlocked { opacity:1; }
+  .tierNum { width:9vw; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:4.2vw;
+    color:#9fb4ff; background:rgba(20,20,50,.7); border-radius:12px; }
+  .tierCell { flex:1; border:none; border-radius:12px; padding:11px 8px; font-size:3.7vw; font-weight:800; color:#fff;
+    background:rgba(20,20,50,.85); border:2px solid #33407a; }
+  .tierCell.prem { border-color:#8a6d1a; background:rgba(50,40,10,.85); }
+  .tierCell.claimable { border-color:#ffd54d; background:linear-gradient(180deg,#ff9a3a,#e8511a); animation:claimPulse 1.2s ease-in-out infinite; }
+  @keyframes claimPulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.04);} }
+  .tierCell.claimed { color:#9dff70; border-color:#2e7d32; background:rgba(20,45,20,.8); }
+  .tierCell.locked { color:#7f8ac8; }
+
+  /* ---------- ANİMASYON CİLALARI ---------- */
+  .screen { animation:screenIn .28s ease-out; }
+  @keyframes screenIn { from { opacity:0; transform:scale(1.045); } to { opacity:1; transform:scale(1); } }
+  .hudbox.bump { animation:coinBump .3s ease-out; }
+  @keyframes coinBump { 40% { transform:scale(1.28); } 100% { transform:scale(1); } }
+  #goSplash { position:fixed; inset:0; z-index:7; display:flex; align-items:center; justify-content:center;
+    pointer-events:none; font-size:22vw; font-weight:900; letter-spacing:4px; opacity:0;
+    background:transparent; -webkit-text-stroke:2px #a33107;
+    color:#ffd54d; text-shadow:0 0 40px rgba(255,170,60,.8); }
+  #goSplash.go { animation:goPop 1s ease-out forwards; }
+  @keyframes goPop { 0%{opacity:0; transform:scale(.4);} 25%{opacity:1; transform:scale(1.15);} 55%{transform:scale(1);} 100%{opacity:0; transform:scale(1.05);} }
+
+  /* eğitim katmanı */
+  #tutorial { position:fixed; inset:0; z-index:9; background:rgba(5,1,20,.55); pointer-events:none;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4vh; color:#fff; }
+  .tutRow { font-size:5.5vw; font-weight:800; text-shadow:0 2px 8px #000; background:rgba(0,0,20,.55);
+    border-radius:16px; padding:12px 26px; animation:tutPulse 1.5s ease-in-out infinite; }
+  @keyframes tutPulse { 0%,100%{transform:scale(1); opacity:.85;} 50%{transform:scale(1.07); opacity:1;} }
+
+  /* TEST modu rozeti */
+  #cheatBadge { position:fixed; top:calc(env(safe-area-inset-top,0px) + 2px); left:50%; transform:translateX(-50%);
+    z-index:20; background:#c62828; color:#fff; font-size:2.8vw; font-weight:900; letter-spacing:1px;
+    padding:3px 14px; border-radius:0 0 10px 10px; pointer-events:none; }
+
+  /* istatistik kutusu */
+  #statsBox { width:86vw; }
+  .statLine { display:flex; justify-content:space-between; padding:8px 14px; margin:5px 0;
+    background:rgba(20,20,50,.7); border-radius:12px; font-size:3.9vw; color:#cfd8ff; }
+  .statLine b { color:#ffd54d; }
+  .trailDot { width:11vw; height:11vw; border-radius:50%; border:3px solid rgba(255,255,255,.35); flex-shrink:0;
+    box-shadow:0 0 14px rgba(255,255,255,.25); }
+
+  /* ---------- HUD ---------- */
+  #hud { position:fixed; top:0; left:0; right:0; padding:calc(env(safe-area-inset-top,0px) + 10px) 14px 8px; display:flex; justify-content:space-between; align-items:flex-start; z-index:5; pointer-events:none; color:#fff; }
+  .hudbox { background:rgba(0,0,10,.45); border-radius:12px; padding:6px 12px; font-weight:800; font-size:4.6vw; text-shadow:0 2px 4px #000; }
+  #hudCoins { color:#ffd54d; }
+  #pauseBtn { pointer-events:auto; background:rgba(0,0,10,.45); border:none; color:#fff; border-radius:12px; font-size:5.5vw; padding:4px 14px; font-weight:900; }
+  #fxBar { position:fixed; top:calc(env(safe-area-inset-top,0px) + 62px); left:0; right:0; display:flex; justify-content:center; gap:8px; z-index:5; pointer-events:none; }
+  .fxChip { background:rgba(0,0,25,.55); border:1px solid rgba(255,255,255,.25); border-radius:20px; padding:4px 13px; color:#fff; font-weight:800; font-size:4.2vw; text-shadow:0 1px 3px #000; }
+
+  /* uçan puan yazıları */
+  #popups { position:fixed; inset:0; z-index:6; pointer-events:none; }
+  .pop { position:absolute; left:50%; top:58%; transform:translateX(-50%); font-size:5.5vw; font-weight:900;
+    color:#ffd54d; text-shadow:0 2px 8px #000, 0 0 14px rgba(255,200,60,.6); opacity:0; white-space:nowrap; }
+  .pop.go { animation:popFly 1s ease-out forwards; }
+  @keyframes popFly { 0%{opacity:0; transform:translate(-50%,10px) scale(.7);} 15%{opacity:1; transform:translate(-50%,0) scale(1.1);} 100%{opacity:0; transform:translate(-50%,-70px) scale(1);} }
+
+  /* ---------- ÖLÜM FLAŞI ---------- */
+  #flash { position:fixed; inset:0; z-index:8; pointer-events:none; opacity:0;
+    background:radial-gradient(circle at 50% 60%, rgba(255,220,150,.95) 0%, rgba(255,110,30,.75) 40%, rgba(120,10,0,.4) 75%);
+    transition:opacity .45s ease-out; }
+
+  /* ---------- CANLANMA ---------- */
+  #revive { background:rgba(10,2,25,.75); }
+  #revive .goTitle { font-size:8vw; }
+  #reviveBarO { width:64vw; height:10px; background:rgba(255,255,255,.15); border-radius:6px; overflow:hidden; margin:2vh 0; }
+  #reviveBar { height:100%; width:100%; background:linear-gradient(90deg,#ffd54d,#ff8a2a); border-radius:6px; }
+
+  /* ---------- GARAJ ---------- */
+  #garage { justify-content:flex-start; padding-top:calc(env(safe-area-inset-top,0px) + 20px); overflow-y:auto; background:rgba(5,1,20,.92); }
+  #garage h2 { font-size:8vw; color:#ffd54d; margin-bottom:1vh; }
+  #garage h3 { font-size:5.5vw; color:#9fb4ff; letter-spacing:3px; margin:3vh 0 1vh; }
+  #garageCoins { font-size:5vw; color:#ffd54d; font-weight:800; margin-bottom:2vh; }
+  .rocketCard { width:86vw; background:rgba(20,20,50,.85); border:2px solid #33407a; border-radius:18px; padding:14px 16px; margin:8px 0; display:flex; align-items:center; gap:14px; }
+  .rocketCard.owned { border-color:#3d6cff; }
+  .rocketCard.selected { border-color:#ffd54d; box-shadow:0 0 18px rgba(255,213,77,.35); }
+  .rocketIcon { font-size:11vw; filter:drop-shadow(0 0 8px rgba(255,255,255,.3)); }
+  .rocketInfo { flex:1; text-align:left; }
+  .rocketName { font-size:5vw; font-weight:900; color:#fff; }
+  .rocketDesc { font-size:3.4vw; color:#9fb4ff; margin-top:2px; }
+  .pips { margin-top:4px; font-size:3.6vw; letter-spacing:2px; }
+  .pips .on { color:#ffd54d; } .pips .off { color:#3a4470; }
+  .rocketBtn { border:none; border-radius:10px; padding:10px 14px; font-size:3.8vw; font-weight:800; color:#fff; background:linear-gradient(180deg,#ff8a2a,#e8511a); white-space:nowrap; }
+  .rocketBtn.sel { background:linear-gradient(180deg,#4caf50,#2e7d32); }
+  .rocketBtn.locked { background:#444a66; }
+
+  /* ---------- OYUN SONU / PAUSE ---------- */
+  #gameOver, #paused { background:rgba(5,1,20,.85); }
+  .goTitle { font-size:10vw; font-weight:900; letter-spacing:2px; margin-bottom:1.4vh;
+    background:linear-gradient(180deg,#ff8080,#d83a3a); -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    filter:drop-shadow(0 0 18px rgba(255,60,40,.5)); }
+  .goStats { font-size:4.8vw; margin:.5vh 0 1.5vh; text-align:center; line-height:1.6; }
+  .goStats b { color:#ffd54d; }
+
+  #tapHint { position:fixed; bottom:12vh; left:0; right:0; text-align:center; color:rgba(255,255,255,.85); font-size:4.2vw; z-index:5; pointer-events:none; text-shadow:0 2px 6px #000; transition:opacity .5s; }
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div id="flash"></div>
+
+<!-- ===== BOSNA GAMES stüdyo açılış ekranı ===== -->
+<div id="splash">
+  <div id="splashRocket">🚀</div>
+  <div id="splashLogo"><span>G</span></div>
+  <div id="splashName">BOSNA <span class="gred">G</span>AMES</div>
+  <div id="splashBarO"><div id="splashBar"></div></div>
+  <div id="splashTag">STUDIO</div>
+</div>
+<div id="goSplash"></div>
+<div id="popups"></div>
+
+<div id="hud" class="hidden">
+  <div class="hudbox" id="hudScore">0</div>
+  <div class="hudbox" id="hudCoins">🪙 0</div>
+  <button id="pauseBtn">II</button>
+</div>
+<div id="fxBar"></div>
+<div id="tapHint" class="hidden">← Swipe → change lane &nbsp;|&nbsp; ↑ climb &nbsp;|&nbsp; ↓ dive</div>
+
+<div id="cheatBadge" class="hidden">🧪 TEST MODE · INFINITE COINS</div>
+<div id="tutorial" class="hidden">
+  <div class="tutRow">👈 👉 &nbsp;Swipe left / right — change lane</div>
+  <div class="tutRow">👆 &nbsp;Swipe up — fly high</div>
+  <div class="tutRow">👇 &nbsp;Swipe down — fly low</div>
+  <div class="tutRow" style="color:#ffd54d;">Avoid rocks & lasers, grab coins! 🚀</div>
+</div>
+
+<div id="menu" class="screen">
+  <button id="settingsBtn">⚙️</button>
+  <button id="leadBtn" class="closeX" style="font-size:6vw;">🏆</button>
+  <div class="menuRocket">🚀</div>
+  <div class="title">ROCKET RUSH</div>
+  <div class="subtitle">Endless space runner</div>
+  <div id="menuRank">🎖️ <b>Rookie Pilot</b></div>
+  <div id="rankBarO"><div id="rankBar"></div></div>
+  <div id="offlineHint" class="hidden" data-i18n="offhint" style="font-size:3.2vw;color:#ffb37a;background:rgba(60,20,0,.5);border:1px solid rgba(255,140,60,.4);border-radius:12px;padding:7px 14px;margin-bottom:1.4vh;max-width:88vw;text-align:center;">📴 offline</div>
+  <button id="giftBtn" class="hidden">🎁 Daily Gift: +250</button>
+  <div class="statRow">
+    <div class="statCard"><div class="v" id="menuBest">0</div><div class="l">🏆 <span data-i18n="best">BEST</span></div></div>
+    <div class="statCard"><div class="v" id="menuCoins">0</div><div class="l">🪙 <span data-i18n="coins">COINS</span></div></div>
+  </div>
+  <div class="missionBox"><h4>📋 <span data-i18n="missions">MISSIONS</span></h4><div id="menuMissions"></div></div>
+  <button class="btn" id="playBtn">▶ &nbsp;<span data-i18n="play">PLAY</span></button>
+  <button class="btn secondary" id="campaignBtn" style="background:linear-gradient(180deg,#8a5cff,#5a2ac8);box-shadow:0 6px 0 #3a1478, 0 12px 28px rgba(120,80,220,.35);">📖 <span data-i18n="campaign">CAMPAIGN</span></button>
+  <button class="btn" id="multiBtn" style="background:linear-gradient(180deg,#e85a8a,#b0246a);box-shadow:0 6px 0 #6d1240, 0 12px 28px rgba(220,60,130,.35);">⚔️ <span data-i18n="multi">MULTIPLAYER</span></button>
+  <button class="btn secondary" id="garageBtn">🚀 <span data-i18n="garage">GARAGE</span></button>
+  <button class="btn secondary" id="seasonBtn" style="background:linear-gradient(180deg,#b06df0,#7a2ac8);box-shadow:0 6px 0 #4a1478, 0 12px 28px rgba(150,80,220,.35);">🎫 <span data-i18n="season">SEASON PASS</span></button>
+</div>
+
+<div id="season" class="screen hidden">
+  <button class="closeX" id="seasonBack">✕</button>
+  <h2>🎫 <span data-i18n="season">SEASON PASS</span></h2>
+  <div id="seasonInfo">Season 1</div>
+  <div id="seasonBarO"><div id="seasonBar"></div></div>
+  <div id="seasonSp">0 SP</div>
+  <button id="premiumBtn">👑 UNLOCK PREMIUM · 🪙 10,000</button>
+  <div id="tierList"></div>
+  <div style="height:6vh"></div>
+</div>
+
+<div id="campaign" class="screen hidden" style="justify-content:flex-start;padding-top:calc(env(safe-area-inset-top,0px) + 20px);overflow-y:auto;background:rgba(5,1,20,.92);">
+  <button class="closeX" id="campaignX">✕</button>
+  <div class="title" style="font-size:8vw;">📖 <span data-i18n="campaign">CAMPAIGN</span></div>
+  <div id="campProg" style="font-size:4vw;color:#ffd54d;font-weight:800;margin-bottom:1vh;"></div>
+  <div id="campList" style="width:90vw;"></div>
+  <div style="height:6vh"></div>
+</div>
+
+<div id="multi" class="screen hidden">
+  <button class="closeX" id="multiX">✕</button>
+  <div class="title" style="font-size:9vw;">⚔️ <span data-i18n="multi">MULTIPLAYER</span></div>
+  <div class="missionBox"><div class="mTxt" style="justify-content:center;"><span data-i18n="airivals">Race 7 AI rivals</span></div></div>
+  <button class="btn" id="quickBtn">👥 <span data-i18n="quick">QUICK MATCH</span></button>
+  <button class="btn secondary" id="createRoomBtn">➕ <span data-i18n="createroom">CREATE ROOM</span></button>
+  <button class="btn secondary" id="joinRoomBtn">🔑 <span data-i18n="joinroom">JOIN ROOM</span></button>
+  <div id="roomHint" style="color:#7f8ac8;font-size:3.2vw;margin-top:1vh;"></div>
+  <div id="matchList"></div>
+</div>
+
+<div id="lobby" class="screen hidden">
+  <button class="closeX" id="lobbyX">✕</button>
+  <div class="title" style="font-size:8vw;">🏁 <span data-i18n="roomcode">ROOM CODE</span></div>
+  <div id="lobbyCode" style="font-size:14vw;font-weight:900;letter-spacing:6px;color:#ffd54d;text-shadow:0 0 24px rgba(255,213,77,.5);margin:1vh 0;"></div>
+  <div id="lobbyCount" style="font-size:4.5vw;color:#9fb4ff;margin-bottom:1.5vh;">1/8</div>
+  <div id="lobbyList" style="width:86vw;max-height:38vh;overflow-y:auto;"></div>
+  <button class="btn hidden" id="lobbyStart">🚀 <span data-i18n="startrace">START RACE</span></button>
+  <div id="lobbyWait" class="hidden" style="font-size:4.4vw;color:#9fb4ff;margin-top:2vh;" data-i18n="waiting">Waiting for host…</div>
+</div>
+
+<div id="inviteModal" class="screen hidden" style="background:rgba(5,1,20,.96);z-index:15;">
+  <button class="closeX" id="inviteX">✕</button>
+  <div class="title" style="font-size:7.5vw;">🎁 <span data-i18n="invite">Invite Friends</span></div>
+  <div style="font-size:3.8vw;color:#9fb4ff;margin-top:1vh;" data-i18n="yourcode">Your invite code</div>
+  <div id="myInviteCode" style="font-size:12vw;font-weight:900;letter-spacing:5px;color:#ffd54d;text-shadow:0 0 22px rgba(255,213,77,.5);margin:.5vh 0 1vh;">------</div>
+  <button class="btn small" id="inviteShare">📤 <span data-i18n="share">SHARE</span></button>
+  <div style="height:3vh"></div>
+  <div style="font-size:3.8vw;color:#9fb4ff;" data-i18n="entercode">Enter friend's code</div>
+  <input id="refInput" maxlength="6" autocomplete="off" placeholder="ABC123"
+    style="width:56vw;padding:12px;font-size:7vw;font-weight:900;text-align:center;letter-spacing:6px;text-transform:uppercase;color:#9dff70;background:rgba(20,20,50,.9);border:2px solid #3d6cff;border-radius:14px;outline:none;margin:1.5vh 0;">
+  <div id="refErr" style="color:#ff8080;font-size:3.6vw;min-height:4vw;"></div>
+  <button class="btn" id="refGo">✓ <span data-i18n="redeem">REDEEM</span></button>
+</div>
+
+<div id="joinModal" class="screen hidden" style="background:rgba(5,1,20,.96);z-index:15;">
+  <button class="closeX" id="joinX">✕</button>
+  <div class="title" style="font-size:7.5vw;">🔑 <span data-i18n="joinroom">JOIN ROOM</span></div>
+  <input id="joinInput" maxlength="4" autocomplete="off" placeholder="ABCD"
+    style="width:56vw;padding:14px;font-size:9vw;font-weight:900;text-align:center;letter-spacing:8px;text-transform:uppercase;color:#ffd54d;background:rgba(20,20,50,.9);border:2px solid #3d6cff;border-radius:14px;outline:none;margin:2vh 0;">
+  <div id="joinErr" style="color:#ff8080;font-size:3.6vw;min-height:4vw;margin-bottom:1vh;"></div>
+  <button class="btn" id="joinGo">✓ <span data-i18n="enter">ENTER</span></button>
+</div>
+
+<div id="lead" class="screen hidden">
+  <button class="closeX" id="leadX">✕</button>
+  <div class="title" style="font-size:9vw;">🏆 <span data-i18n="lead">LEADERBOARD</span></div>
+  <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:5px;margin-bottom:1vh;">
+    <button class="tabBtn on" id="leadTab_world" data-i18n="world">WORLD</button>
+    <button class="tabBtn" id="leadTab_country" data-i18n="country">COUNTRY</button>
+    <button class="tabBtn" id="leadTab_daily" data-i18n="daily">DAILY</button>
+    <button class="tabBtn" id="leadTab_weekly" data-i18n="weekly">WEEKLY</button>
+  </div>
+  <div id="leadLive" style="font-size:3.2vw;font-weight:800;margin-bottom:1vh;">📡 OFFLINE</div>
+  <div id="leadList" style="max-height:55vh;overflow-y:auto;"></div>
+</div>
+
+<div id="boost" class="screen hidden" style="background:rgba(5,1,20,.9);">
+  <button class="closeX" id="boostX">✕</button>
+  <div class="title" style="font-size:8vw;">🎯 <span data-i18n="use">Use boosters?</span></div>
+  <div id="boostRows" style="width:86vw;"></div>
+  <button class="btn" id="boostStart">🚀 <span data-i18n="start">START</span></button>
+</div>
+
+<div id="lab" class="screen hidden">
+  <button class="closeX" id="labX">✕</button>
+  <div id="labStats"></div>
+  <div id="labRows"></div>
+  <button class="btn small" id="labEquip">🚀 EQUIP</button>
+</div>
+
+<div id="preview" class="screen hidden">
+  <button class="closeX" id="prevX">✕</button>
+  <div id="prevName"></div>
+  <div id="prevDesc"></div>
+</div>
+
+<div id="langModal" class="screen hidden" style="background:rgba(5,1,20,.95);z-index:14;">
+  <button class="closeX" id="langX">✕</button>
+  <div class="title" style="font-size:8vw;">🌍 <span data-i18n="lang">Language</span></div>
+  <div id="langList"></div>
+</div>
+
+<div id="nameModal" class="screen hidden" style="background:rgba(5,1,20,.96);z-index:15;">
+  <div class="title" style="font-size:7.5vw;" data-i18n="nameq">CHOOSE YOUR PILOT NAME</div>
+  <input id="nameInput" maxlength="12" autocomplete="off">
+  <div class="subtitle" style="margin-top:2vh;" data-i18n="flagq">Choose your country</div>
+  <div id="flagGrid"></div>
+  <button class="btn" id="nameSave">✓ <span data-i18n="start">START</span></button>
+</div>
+
+<div id="settings" class="screen hidden">
+  <button class="closeX" id="settingsBack">✕</button>
+  <h2>⚙️ <span data-i18n="settings">SETTINGS</span></h2>
+  <div class="settRow">
+    <div><div class="lbl">🔊 <span data-i18n="sound">Sound effects</span></div><div class="sub">Coins, crashes, UI</div></div>
+    <button class="settToggle on" id="settSound">ON</button>
+  </div>
+  <div class="settRow">
+    <div><div class="lbl">🎵 <span data-i18n="music">Music</span></div><div class="sub">Synthwave soundtrack</div></div>
+    <button class="settToggle on" id="settMusic">ON</button>
+  </div>
+  <div class="settRow">
+    <div><div class="lbl">📳 <span data-i18n="vib">Vibration</span></div><div class="sub">Crash & pickup haptics</div></div>
+    <button class="settToggle on" id="settVib">ON</button>
+  </div>
+  <div class="settRow">
+    <div><div class="lbl">👆 <span data-i18n="tutorial">Tutorial</span></div><div class="sub">Show controls on next run</div></div>
+    <button class="settToggle off" id="settTutorial">REPLAY</button>
+  </div>
+  <div class="settRow">
+    <div><div class="lbl">🌍 <span data-i18n="lang">Language</span></div><div class="sub" id="curLang"></div></div>
+    <button class="settToggle off" id="settLang">🌐</button>
+  </div>
+  <div class="settRow">
+    <div><div class="lbl">👤 <span data-i18n="profile">Profile</span></div><div class="sub" id="curProfile"></div></div>
+    <button class="settToggle off" id="settProfile">✏️</button>
+  </div>
+  <div class="settRow">
+    <div><div class="lbl">🎁 <span data-i18n="invite">Invite Friends</span></div><div class="sub">+🪙500 &amp; +🪙300</div></div>
+    <button class="settToggle off" id="settInvite">🎁</button>
+  </div>
+  <div class="settRow">
+    <div><div class="lbl">⭐ <span data-i18n="rate">Rate Us</span></div><div class="sub">Google Play</div></div>
+    <button class="settToggle off" id="settRate">⭐</button>
+  </div>
+  <div class="settRow">
+    <div><div class="lbl">💬 <span data-i18n="feedback">Feedback & bug report</span></div><div class="sub">v6.3</div></div>
+    <button class="settToggle off" id="settFeedback">📤</button>
+  </div>
+  <div class="settRow">
+    <div><div class="lbl">🗑️ <span data-i18n="reset">Reset progress</span></div><div class="sub">Deletes coins, rockets, records</div></div>
+    <button class="settToggle danger" id="settReset">RESET</button>
+  </div>
+  <div id="settVersion">Rocket Rush v6.4 · BOSNA GAMES</div>
+</div>
+
+<div id="garage" class="screen hidden">
+  <button class="closeX" id="garageBack">✕</button>
+  <h2>🚀 <span data-i18n="garage">GARAGE</span></h2>
+  <div id="garageCoins">🪙 0</div>
+  <button class="btn small" id="labBtn" style="background:linear-gradient(180deg,#66d9a8,#1a9a68);box-shadow:0 5px 0 #0d5c3c;">🛠️ <span data-i18n="build">BUILD YOUR OWN ROCKET</span></button>
+  <div id="rocketList"></div>
+  <h3>⚡ <span data-i18n="powerups">POWER-UPS</span></h3>
+  <div id="upgList"></div>
+  <h3>🌈 <span data-i18n="trails">EXHAUST TRAILS</span></h3>
+  <div id="trailList"></div>
+  <h3>🤖 <span data-i18n="drones">DRONES</span></h3>
+  <div id="droneList"></div>
+  <h3>🎯 <span data-i18n="boosters">ONE-TIME BOOSTERS</span></h3>
+  <div id="boostList"></div>
+  <h3>📊 <span data-i18n="stats">STATS</span></h3>
+  <div id="statsBox"></div>
+  <h3>🏅 <span data-i18n="ach">ACHIEVEMENTS</span></h3>
+  <div id="achList"></div>
+  <div style="height:6vh"></div>
+</div>
+
+<div id="revive" class="screen hidden">
+  <div class="goTitle" data-i18n="continueq">CONTINUE?</div>
+  <div id="reviveBarO"><div id="reviveBar"></div></div>
+  <button class="btn" id="reviveAd" style="background:linear-gradient(180deg,#5ecf5e,#2e8b2e);box-shadow:0 6px 0 #1a5c1a, 0 12px 28px rgba(60,180,60,.4);">📺 <span data-i18n="watchad">WATCH AD · FREE</span></button>
+  <button class="btn" id="reviveYes">🚀 <span data-i18n="revive">REVIVE</span> &nbsp;🪙 <span id="reviveCost">300</span></button>
+  <button class="btn small secondary" id="reviveNo" data-i18n="giveup">GIVE UP</button>
+</div>
+
+<div id="gameOver" class="screen hidden">
+  <div class="goTitle" id="goTitle">GAME OVER</div>
+  <div class="goStats">
+    <span data-i18n="score">Score</span>: <b id="goScore">0</b> &nbsp;·&nbsp; <span data-i18n="dist">Distance</span>: <b id="goDist">0 m</b><br>
+    <span data-i18n="collected">Collected</span>: <b id="goCoins">🪙 0</b> &nbsp;·&nbsp; <span data-i18n="near">Near misses</span>: <b id="goNear">0</b><br>
+    <span id="goRecord" style="color:#4caf50;font-weight:900;"></span>
+  </div>
+  <div class="missionBox"><h4>📋 <span data-i18n="missions">MISSIONS</span></h4><div id="goMissions"></div></div>
+  <div id="goHooks"></div>
+  <button class="btn hidden" id="luckyBtn" style="background:linear-gradient(180deg,#ffd54d,#e8a01a);box-shadow:0 6px 0 #a87107, 0 12px 28px rgba(255,200,60,.4);color:#3a2500;">🎁 <span data-i18n="openbox">OPEN LUCKY BOX</span></button>
+  <button class="btn" id="retryBtn" data-i18n="again">PLAY AGAIN</button>
+  <button class="btn secondary" id="menuBtn" data-i18n="mainmenu">MAIN MENU</button>
+  <button class="btn small secondary" id="shareBtn" style="background:linear-gradient(180deg,#5ecf5e,#2e8b2e);box-shadow:0 5px 0 #1a5c1a;">📤 <span data-i18n="share">SHARE SCORE</span></button>
+</div>
+
+<div id="lucky" class="screen hidden">
+  <div class="goTitle" id="luckyTitle" style="background:linear-gradient(180deg,#fff3b0,#ffb020);-webkit-background-clip:text;">🎁 LUCKY BOX</div>
+  <div id="luckyNum">🪙 0</div>
+  <button class="btn hidden" id="luckyClaim" data-i18n="claim">CLAIM</button>
+</div>
+
+<div id="paused" class="screen hidden">
+  <div class="goTitle" style="background:linear-gradient(180deg,#9fb4ff,#3d6cff);-webkit-background-clip:text;">PAUSED</div>
+  <button class="btn" id="resumeBtn">RESUME</button>
+  <button class="btn secondary" id="pauseMenuBtn">MAIN MENU</button>
+</div>
+
+<script src="three.min.js"></script>
+<script src="firebase-config.js"></script>
+<script src="game.js"></script>
+<script>
+  // Offline oynanabilsin diye service worker (varsa) kaydet
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  }
+</script>
+</body>
+</html>
