@@ -212,7 +212,7 @@ function detectCountry() {
 // ---------- FIREBASE (anonim giriş + gerçek skor tablosu) ----------
 // Kurucu (founder) uid — tek kalıcı yetkili. Değişirse hem burada hem
 // firestore.rules'da güncellenir.
-const FOUNDER_UID = 'fYxDBJP0yAaVbfBcXgGUeIo7VKl1';
+const FOUNDER_UID = 'S9vNVZjiuIMGcTr5il7w2Hdovem1';
 const FB = {
   ok: false, uid: null, token: null, rows: null, rowsAt: 0,
   cfg() { return (typeof FIREBASE !== 'undefined' && FIREBASE.apiKey && FIREBASE.projectId) ? FIREBASE : null; },
@@ -345,6 +345,29 @@ const FB = {
 
   // create yardımcı (otomatik id)
   async create(coll, obj) { const c = this.cfg(); if (!c || !this.ok) return null; try { return await fetch(this.base() + '/' + coll, { method: 'POST', headers: this.hdr(), body: JSON.stringify(this.enc(obj)) }).then(x => x.json()); } catch (e) { return null; } },
+
+  // ---- KURUCU/ADMİN GİRİŞİ (e-posta+şifre → sabit uid, döngü yok) ----
+  async loginEmail(email, pass) {
+    const c = this.cfg(); if (!c) return { ok: false, msg: 'yapılandırma yok' };
+    try {
+      const r = await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=' + c.apiKey, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email, password: pass, returnSecureToken: true }),
+      }).then(x => x.json());
+      if (r.idToken) {
+        this.uid = r.localId; this.token = r.idToken; this.ok = true;
+        localStorage.setItem('rr_fb', JSON.stringify({ rt: r.refreshToken }));
+        this.admins = null; await this.detectRole();
+        return { ok: true };
+      }
+      return { ok: false, msg: (r.error && r.error.message) || 'giriş başarısız' };
+    } catch (e) { return { ok: false, msg: 'ağ hatası' }; }
+  },
+  async logout() {
+    try { localStorage.removeItem('rr_fb'); } catch (e) {}
+    this.ok = false; this.uid = null; this.token = null; this.role = 'user'; this.admins = null; this._bansAt = 0;
+    await this.init(); await this.detectRole();
+  },
 
   // ban uygula: opts { permanent:bool, days:int, reason:str }
   async ban(uid, opts) {
@@ -3292,7 +3315,35 @@ setTimeout(() => {
     hM.body.appendChild(mBtn('🐞 Hata bildir', '#c2461f', bugReport));
     hM.body.appendChild(mBtn('💬 Öneri / Destek', '#2ea86a', support));
     if (FB.ok && FB.role === 'user') hM.body.appendChild(mBtn('🛡 Admin olmak için başvur', '#5a4a7a', applyAdminForm));
+    hM.body.appendChild(mBtn('🔑 Kurucu / Admin girişi', '#1a3a8f', loginForm));
     hM.body.appendChild(mBtn('📋 UID\'imi göster (geçici)', '#444', showMyUid));
+  }
+  function loginForm() {
+    hM.h.textContent = '🔑 KURUCU / ADMİN GİRİŞİ';
+    hM.body.innerHTML = '';
+    if (FB.role === 'founder' || FB.role === 'admin') {
+      hM.body.appendChild(elc('div', 'padding:10px;color:#9dff70;font-size:14px', '✅ Giriş yapıldı — rol: ' + FB.role));
+      hM.body.appendChild(mBtn('🚪 Çıkış yap', '#8f0d20', async () => {
+        await FB.logout(); popup && popup('Çıkış yapıldı', '#ffb37a');
+        if (window.refreshStaffUI) window.refreshStaffUI(); helpMenu();
+      }));
+      hM.body.appendChild(mBtn('← Geri', '#333', helpMenu));
+      return;
+    }
+    const cssI = 'width:100%;margin:6px 0;border-radius:10px;border:1px solid #3a2a5a;background:#0c0718;color:#fff;padding:11px;font:400 14px "Segoe UI"';
+    const em = elc('input', cssI); em.type = 'email'; em.placeholder = 'E-posta';
+    const pw = elc('input', cssI); pw.type = 'password'; pw.placeholder = 'Şifre';
+    hM.body.appendChild(em); hM.body.appendChild(pw);
+    const go = mBtn('🔑 Giriş yap', '#2ea86a', async () => {
+      if (!em.value || !pw.value) { popup && popup('E-posta ve şifre gir', '#ffb37a'); return; }
+      go.textContent = '...'; go.disabled = true;
+      const r = await FB.loginEmail(em.value.trim(), pw.value);
+      if (r.ok) { popup && popup('✅ Giriş başarılı — rol: ' + FB.role, '#9dff70'); if (window.refreshStaffUI) window.refreshStaffUI(); hM.hide(); }
+      else { popup && popup('❌ ' + (r.msg || 'giriş başarısız'), '#ff5555'); go.textContent = '🔑 Giriş yap'; go.disabled = false; }
+    });
+    hM.body.appendChild(go);
+    hM.body.appendChild(mBtn('← Geri', '#333', helpMenu));
+    setTimeout(() => em.focus(), 100);
   }
   function showMyUid() {
     const id = FB.uid || '(giriş yok — internete bağlan)';
