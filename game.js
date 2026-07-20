@@ -212,7 +212,7 @@ function detectCountry() {
 // ---------- FIREBASE (anonim giriş + gerçek skor tablosu) ----------
 // Kurucu (founder) uid — tek kalıcı yetkili. Değişirse hem burada hem
 // firestore.rules'da güncellenir.
-const FOUNDER_UID = 'dZXicmUUP5hpErq0o15V7Ote11m2';
+const FOUNDER_UID = 'fYxDBJP0yAaVbfBcXgGUeIo7VKl1';
 const FB = {
   ok: false, uid: null, token: null, rows: null, rowsAt: 0,
   cfg() { return (typeof FIREBASE !== 'undefined' && FIREBASE.apiKey && FIREBASE.projectId) ? FIREBASE : null; },
