@@ -250,11 +250,11 @@ const FB = {
     // Kurucu ve adminler HİÇBİR sıralamaya girmez (skor bile göndermez)
     if (!c || !this.ok || !save.best || this.banned || this.isStaff()) return;
     try {
-      await fetch('https://firestore.googleapis.com/v1/projects/' + c.projectId +
+      await this.authFetch('https://firestore.googleapis.com/v1/projects/' + c.projectId +
         '/databases/(default)/documents/scores/' + this.uid +
         '?updateMask.fieldPaths=name&updateMask.fieldPaths=country&updateMask.fieldPaths=best&updateMask.fieldPaths=t', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + this.token },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fields: {
           name: { stringValue: (save.name || 'Pilot').slice(0, 12) },
           country: { stringValue: save.country || 'US' },
@@ -269,16 +269,16 @@ const FB = {
     if (!c || !this.ok) return null;
     if (this.rows && Date.now() - this.rowsAt < 60000) return this.rows; // 1 dk önbellek
     try {
-      const r = await fetch('https://firestore.googleapis.com/v1/projects/' + c.projectId +
+      const r = await (await this.authFetch('https://firestore.googleapis.com/v1/projects/' + c.projectId +
         '/databases/(default)/documents:runQuery', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + this.token },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ structuredQuery: {
           from: [{ collectionId: 'scores' }],
           orderBy: [{ field: { fieldPath: 'best' }, direction: 'DESCENDING' }],
           limit: 200,
         } }),
-      }).then(x => x.json());
+      })).json();
       const rows = [];
       for (const it of r) {
         if (!it.document) continue;
@@ -337,7 +337,7 @@ const FB = {
     if (this._bans && Date.now() - this._bansAt < 30000) return this._bans;
     const m = new Map();
     try {
-      const r = await fetch(this.base() + '/bans?pageSize=300', { headers: this.hdr() }).then(x => x.json());
+      const r = await (await this.authFetch(this.base() + '/bans?pageSize=300')).json();
       for (const d of (r.documents || [])) m.set(d.name.split('/').pop(), this.dec(d));
     } catch (e) {}
     this._bans = m; this._bansAt = Date.now();
@@ -350,7 +350,7 @@ const FB = {
     const c = this.cfg();
     if (!c || !this.ok) return this.admins || (this.admins = new Set());
     try {
-      const r = await fetch(this.base() + '/admins?pageSize=300', { headers: this.hdr() }).then(x => x.json());
+      const r = await (await this.authFetch(this.base() + '/admins?pageSize=300')).json();
       this.admins = new Set((r.documents || []).map(d => d.name.split('/').pop()));
     } catch (e) { this.admins = this.admins || new Set(); }
     return this.admins;
@@ -491,8 +491,8 @@ const FB = {
     const day = Math.floor(Date.now() / 864e5), week = Math.floor(day / 7);
     const coll = weekly ? 't_week_' + week : 't_day_' + day;
     try {
-      const r = await fetch(this.base() + ':runQuery', { method: 'POST', headers: this.hdr(),
-        body: JSON.stringify({ structuredQuery: { from: [{ collectionId: coll }], orderBy: [{ field: { fieldPath: 'best' }, direction: 'DESCENDING' }], limit: 100 } }) }).then(x => x.json());
+      const r = await (await this.authFetch(this.base() + ':runQuery', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ structuredQuery: { from: [{ collectionId: coll }], orderBy: [{ field: { fieldPath: 'best' }, direction: 'DESCENDING' }], limit: 100 } }) })).json();
       const rows = [];
       const adm = await this.fetchAdmins();
       const bans = await this.fetchBans();
@@ -543,9 +543,9 @@ const FB = {
   async creditReferrals() {
     if (!this.cfg() || !this.ok) return;
     try {
-      const r = await fetch(this.base() + ':runQuery', { method: 'POST', headers: this.hdr(),
+      const r = await (await this.authFetch(this.base() + ':runQuery', { method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ structuredQuery: { from: [{ collectionId: 'referrals' }],
-          where: { fieldFilter: { field: { fieldPath: 'ref' }, op: 'EQUAL', value: { stringValue: this.uid } } }, limit: 50 } }) }).then(x => x.json());
+          where: { fieldFilter: { field: { fieldPath: 'ref' }, op: 'EQUAL', value: { stringValue: this.uid } } }, limit: 50 } }) })).json();
       let gained = 0;
       for (const it of (r || [])) {
         if (!it.document) continue;
