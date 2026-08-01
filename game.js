@@ -311,12 +311,15 @@ const FB = {
       t: Date.now(),
     });
   },
+  playersStatus: 0,
   async listPlayers() {
     try {
-      const r = await (await this.authFetch(this.base() + '/players?pageSize=300')).json();
+      const res = await this.authFetch(this.base() + '/players?pageSize=300');
+      this.playersStatus = res.status;
+      const r = await res.json();
       return (r.documents || []).map(d => ({ id: d.name.split('/').pop(), ...this.dec(d) }))
         .sort((a, b) => (b.t || 0) - (a.t || 0));   // en son görülen üstte
-    } catch (e) { return []; }
+    } catch (e) { this.playersStatus = -1; return []; }
   },
 
   // ---- MODERASYON + ROLLER ----
@@ -450,11 +453,13 @@ const FB = {
   base() { const c = this.cfg(); return 'https://firestore.googleapis.com/v1/projects/' + c.projectId + '/databases/(default)/documents'; },
   hdr() { return { 'Content-Type': 'application/json', Authorization: 'Bearer ' + this.token }; },
   // yetkili istek: 401/403 alırsa token'ı yenileyip bir kez daha dener (kendi kendini onarır)
+  lastStatus: 0, lastUrl: '',      // teşhis için son isteğin sonucu
   async authFetch(url, opts) {
     opts = opts || {};
     const mk = () => Object.assign({}, opts, { headers: Object.assign({}, opts.headers || {}, { Authorization: 'Bearer ' + this.token }) });
     let res = await fetch(url, mk());
     if (res.status === 401 || res.status === 403) { if (await this.refreshToken()) res = await fetch(url, mk()); }
+    this.lastStatus = res.status; this.lastUrl = url;
     return res;
   },
   enc(o) { // js objesi → firestore fields
@@ -3947,6 +3952,13 @@ window.openModConsole = function () {
     return all.filter(u => (u.name || '').toLowerCase().includes(needle));
   }
 
+  // "bulunamadı" derken sebebini de söyle: izin sorunu mu, gerçekten yok mu?
+  function notFoundHint() {
+    if (FB.playersStatus === 403 || FB.playersStatus === 401) return '  ⚠ players read DENIED (HTTP ' + FB.playersStatus + ') — publish latest rules, then "refresh"';
+    if (FB.playersStatus === -1) return '  ⚠ network error';
+    return '  (that device may still be on an old version — try: list / diag)';
+  }
+
   let mode = 'idle', target = null, chosen = null;
 
   async function handle(raw) {
@@ -4016,11 +4028,32 @@ window.openModConsole = function () {
         'SYSTEM\n' +
         '  stats            server counters\n' +
         '  refresh          renew auth token\n' +
-        '  clear            clear screen');
+        '  diag             server permission check\n  clear            clear screen');
       return;
     }
     if (cmd === 'clear') { log.innerHTML = ''; return; }
     if (cmd === 'me' || cmd === 'whoami') { sys('role: ' + FB.role + '  ·  uid: ' + FB.uid + '  ·  name: ' + (save.name || 'Pilot')); return; }
+
+    // ---- TEŞHİS: sunucu gerçekte ne diyor? ----
+    if (cmd === 'diag') {
+      sys('running diagnostics…');
+      line('   role      : ' + FB.role);
+      line('   uid       : ' + FB.uid);
+      line('   founder?  : ' + (FB.uid === FOUNDER_UID ? 'YES (matches rules)' : 'NO — rules expect ' + FOUNDER_UID.slice(0, 12) + '…'));
+      line('   token     : ' + (FB.token ? (FB.token.length + ' chars') : 'MISSING'));
+      const fresh = await FB.refreshToken();
+      line('   refresh   : ' + (fresh ? 'ok' : 'FAILED (no stored session — log in again)'));
+      for (const coll of ['players', 'admin_requests', 'tickets', 'reports', 'admins', 'bans', 'scores']) {
+        try {
+          const r = await FB.authFetch(FB.base() + '/' + coll + '?pageSize=5');
+          const j = await r.json().catch(() => ({}));
+          const n = (j.documents || []).length;
+          line('   ' + coll.padEnd(15) + ' HTTP ' + r.status + (r.status === 200 ? ('  → ' + n + ' doc') : ('  → ' + ((j.error && j.error.status) || 'error'))));
+        } catch (e) { line('   ' + coll.padEnd(15) + ' network error'); }
+      }
+      sys('if any line says PERMISSION_DENIED → publish the latest firestore rules');
+      return;
+    }
     if (cmd === 'refresh') { const ok = await FB.refreshToken(); await FB.detectRole(); sys(ok ? ('token renewed · role: ' + FB.role) : 'no session to renew'); return; }
 
     if (cmd === 'stats') {
@@ -4058,7 +4091,7 @@ window.openModConsole = function () {
       if (FB.role !== 'founder') { err('founder only'); return; }
       if (!arg) { err('usage: ' + cmd + ' <name>'); return; }
       const u = await findUser(arg);
-      if (!u.length) { err('user not found: ' + arg); return; }
+      if (!u.length) { err('user not found: ' + arg + notFoundHint()); return; }
       if (u.length > 1) { err('multiple matches:'); u.slice(0, 8).forEach(x => line('   ' + x.name)); return; }
       if (cmd === 'promote') { const ok = await FB.approveAdmin(u[0].id, u[0].name); sys(ok ? ('✔ ' + u[0].name + ' is now ADMIN') : '✘ failed'); }
       else { await FB.removeAdmin(u[0].id); sys('✔ ' + u[0].name + ' is no longer admin'); }
@@ -4131,7 +4164,7 @@ window.openModConsole = function () {
     if (cmd === 'wipe') {
       if (!arg) { err('usage: wipe <name>'); return; }
       const u = await findUser(arg);
-      if (!u.length) { err('user not found: ' + arg); return; }
+      if (!u.length) { err('user not found: ' + arg + notFoundHint()); return; }
       if (u.length > 1) { err('multiple matches:'); u.slice(0, 8).forEach(x => line('   ' + x.name)); return; }
       await FB.del('scores/' + u[0].id); FB.rowsAt = 0;
       sys('✔ score wiped for ' + u[0].name);
@@ -4166,7 +4199,7 @@ window.openModConsole = function () {
     if (cmd === 'who') {
       if (!arg) { err('usage: who <name>'); return; }
       const u = await findUser(arg);
-      if (!u.length) { err('user not found: ' + arg); return; }
+      if (!u.length) { err('user not found: ' + arg + notFoundHint()); return; }
       const bans = await FB.fetchBans();
       u.slice(0, 5).forEach(x => {
         const b = bans.get(x.id);
@@ -4178,7 +4211,7 @@ window.openModConsole = function () {
     if (cmd === 'unban') {
       if (!arg) { err('usage: unban <name>'); return; }
       const u = await findUser(arg);
-      if (!u.length) { err('user not found: ' + arg); return; }
+      if (!u.length) { err('user not found: ' + arg + notFoundHint()); return; }
       if (u.length > 1) { err('multiple matches, be specific:'); u.slice(0, 8).forEach(x => line('   ' + x.name)); return; }
       const ok = await FB.unban(u[0].id);
       sys(ok ? ('✔ unbanned ' + u[0].name) : '✘ failed (permission?)');
