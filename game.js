@@ -143,7 +143,7 @@ ensureSeason();
 // ---------- ÇOK DİLLİLİK (endonim adlarıyla) ----------
 const LANGS = {
   en: { name: 'ENGLISH', d: {} },
-  tr: { name: 'TÜRKÇE', d: { play:'OYNA', garage:'GARAJ', season:'SEZON KARTI', multi:'ÇOK OYUNCULU', settings:'AYARLAR', missions:'GÖREVLER', best:'REKOR', coins:'ALTIN', gameover:'OYUN BİTTİ', score:'Skor', dist:'Mesafe', collected:'Toplanan', near:'Yakın geçiş', again:'TEKRAR OYNA', mainmenu:'ANA MENÜ', share:'SKORU PAYLAŞ', continueq:'DEVAM ET?', revive:'CANLAN', giveup:'VAZGEÇ', watchad:'REKLAM İZLE · BEDAVA', luckybox:'ŞANS KUTUSU', openbox:'ŞANS KUTUSUNU AÇ', claim:'AL', sound:'Ses efektleri', music:'Müzik', vib:'Titreşim', tutorial:'Eğitim', reset:'İlerlemeyi sıfırla', lang:'Dil', feedback:'Öneri & Hata bildir', profile:'Profil', powerups:'GÜÇLENDİRMELER', trails:'EGZOZ İZLERİ', drones:'DRONLAR', boosters:'TEK KULLANIMLIK', stats:'İSTATİSTİK', ach:'BAŞARIMLAR', select:'SEÇ', selected:'SEÇİLİ', equip:'TAK', equipped:'TAKILI', buy:'SATIN AL', use:'Kullanılsın mı?', start:'BAŞLA', lead:'SKOR TABLOSU', world:'DÜNYA', country:'ÜLKE', daily:'GÜNLÜK', weekly:'HAFTALIK', you:'SEN', quick:'HIZLI MAÇ', airivals:'7 yapay zekâ rakibe karşı — son ölen kazanır!', online_soon:'Çevrimiçi odalar yakında', finding:'Pilotlar aranıyor…', winner:'KAZANDIN!', eliminated:'ELENDİN', place:'Sıra', alive:'hayatta', newrecord:'YENİ REKOR!', soclose:'ÇOK YAKINDI!', boss_in:'BOSS GELİYOR!', boss_out:'BOSS YENİLDİ!', meteor:'METEOR YAĞMURU!', coinrush:'ALTIN YAĞMURU!', nameq:'PİLOT ADINI SEÇ', flagq:'Ülkeni seç', lab:'ROKET LABORATUVARI', build:'KENDİ ROKETİNİ YAP', createroom:'ODA OLUŞTUR', joinroom:'ODAYA KATIL', roomcode:'ODA KODU', waiting:'Ev sahibi bekleniyor…', roomnf:'Oda bulunamadı', enter:'GİR', startrace:'YARIŞI BAŞLAT', campaign:'GÖREVLER', leveldone:'BÖLÜM TAMAM!', invite:'Arkadaş Davet Et', rate:'Bizi Değerlendir', yourcode:'Senin davet kodun', entercode:'Arkadaşının kodunu gir', redeem:'KULLAN', invited:'Davet ödülü alındı!', offhint:'📴 Çevrimdışısın — skorun ve ilerlemen kaydedilmiyor. İnternete bağlan!', codeused:'Zaten bir davet kullandın', codeself:'Kendi kodunu kullanamazsın', codenf:'Kod bulunamadı', chapter:'Bölüm', level:'Görev', locked:'🔒 KİLİTLİ', complete:'✓ TAMAM', gift:'Günlük Seri', firstrun:'GÜNÜN İLK KOŞUSU: 2X ALTIN!', armorbrk:'Zırh kırıldı!', nearmiss:'Yakın geçiş!', hint:'← Kaydır → şerit değiştir | ↑ yüksel | ↓ alçal', breathe:'😮‍💨 NEFES AL', speedup:'⚡ HIZLANIYOR!', premium:'PREMIUM AÇ', daysleft:'gün kaldı', tier:'Kademe' } },
+  tr: { name: 'TÜRKÇE', d: { play:'OYNA', garage:'GARAJ', season:'SEZON KARTI', multi:'ÇOK OYUNCULU', settings:'AYARLAR', missions:'GÖREVLER', best:'REKOR', coins:'ALTIN', gameover:'OYUN BİTTİ', score:'Skor', dist:'Mesafe', collected:'Toplanan', near:'Yakın geçiş', again:'TEKRAR OYNA', mainmenu:'ANA MENÜ', share:'SKORU PAYLAŞ', continueq:'DEVAM ET?', revive:'CANLAN', giveup:'VAZGEÇ', watchad:'REKLAM İZLE · BEDAVA', luckybox:'ŞANS KUTUSU', openbox:'ŞANS KUTUSUNU AÇ', claim:'AL', sound:'Ses efektleri', music:'Müzik', vib:'Titreşim', tutorial:'Eğitim', reset:'İlerlemeyi sıfırla', lang:'Dil', feedback:'Öneri & Hata bildir', profile:'Profil', powerups:'GÜÇLENDİRMELER', trails:'EGZOZ İZLERİ', drones:'DRONLAR', boosters:'TEK KULLANIMLIK', stats:'İSTATİSTİK', ach:'BAŞARIMLAR', select:'SEÇ', selected:'SEÇİLİ', equip:'TAK', equipped:'TAKILI', buy:'SATIN AL', use:'Kullanılsın mı?', start:'BAŞLA', lead:'SKOR TABLOSU', world:'DÜNYA', country:'ÜLKE', daily:'GÜNLÜK', weekly:'HAFTALIK', you:'SEN', quick:'HIZLI MAÇ', airivals:'7 yapay zekâ rakibe karşı — son ölen kazanır!', online_soon:'Çevrimiçi odalar yakında', finding:'Pilotlar aranıyor…', winner:'KAZANDIN!', eliminated:'ELENDİN', place:'Sıra', alive:'hayatta', newrecord:'YENİ REKOR!', soclose:'ÇOK YAKINDI!', boss_in:'BOSS GELİYOR!', boss_out:'BOSS YENİLDİ!', meteor:'METEOR YAĞMURU!', coinrush:'ALTIN YAĞMURU!', nameq:'PİLOT ADINI SEÇ', flagq:'Ülkeni seç', lab:'ROKET LABORATUVARI', build:'KENDİ ROKETİNİ YAP', createroom:'ODA OLUŞTUR', joinroom:'ODAYA KATIL', roomcode:'ODA KODU', waiting:'Ev sahibi bekleniyor…', roomnf:'Oda bulunamadı', enter:'GİR', startrace:'YARIŞI BAŞLAT', campaign:'GÖREVLER', leveldone:'BÖLÜM TAMAM!', invite:'Arkadaş Davet Et', rate:'Bizi Değerlendir', yourcode:'Senin davet kodun', entercode:'Arkadaşının kodunu gir', redeem:'KULLAN', invited:'Davet ödülü alındı!', offhint:'📴 Çevrimdışısın — skorun ve ilerlemen kaydedilmiyor. İnternete bağlan!', codeused:'Zaten bir davet kullandın', codeself:'Kendi kodunu kullanamazsın', codenf:'Kod bulunamadı', chapter:'Bölüm', level:'Görev', locked:'🔒 KİLİTLİ', complete:'✓ TAMAM', gift:'Günlük Seri', firstrun:'GÜNÜN İLK KOŞUSU: 2X ALTIN!', armorbrk:'Zırh kırıldı!', nearmiss:'Yakın geçiş!', hint:'← Kaydır → şerit değiştir | ↑ yüksel | ↓ alçal', breathe:'😮‍💨 NEFES AL', speedup:'⚡ HIZLANIYOR!', banned_title:'BANLANDINIZ', banned_reason:'Sebep', banned_left:'Kalan süre', banned_perm:'KALICI YASAK', banned_note:'Bu cihazdan oyuna erişemezsiniz.', br_cheat:'Hile / skor manipülasyonu', br_spam:'Spam / reklam', br_abuse:'Hakaret / kötü davranış', br_name:'Uygunsuz kullanıcı adı', br_other:'Kurallara aykırı davranış', d_day:'gün', d_hour:'saat', d_min:'dakika', premium:'PREMIUM AÇ', daysleft:'gün kaldı', tier:'Kademe' } },
   az: { name: 'AZƏRBAYCANCA', d: { play:'OYNA', garage:'QARAJ', season:'MÖVSÜM KARTI', multi:'ÇOX OYUNÇULU', settings:'AYARLAR', missions:'TAPŞIRIQLAR', best:'REKORD', coins:'QIZIL', gameover:'OYUN BİTDİ', score:'Xal', dist:'Məsafə', collected:'Toplanan', near:'Yaxın keçid', again:'YENİDƏN OYNA', mainmenu:'ANA MENYU', share:'XALI PAYLAŞ', continueq:'DAVAM EDİLSİN?', revive:'DİRİL', giveup:'İMTİNA', watchad:'REKLAMA BAX · PULSUZ', luckybox:'ŞANS QUTUSU', openbox:'ŞANS QUTUSUNU AÇ', claim:'GÖTÜR', sound:'Səs effektləri', music:'Musiqi', vib:'Vibrasiya', tutorial:'Təlim', reset:'İrəliləyişi sıfırla', lang:'Dil', feedback:'Təklif & Xəta bildir', profile:'Profil', powerups:'GÜCLƏNDİRİCİLƏR', trails:'İZLƏR', drones:'DRONLAR', boosters:'BİRDƏFƏLİK', stats:'STATİSTİKA', ach:'NAİLİYYƏTLƏR', select:'SEÇ', selected:'SEÇİLİB', equip:'TAX', equipped:'TAXILIB', buy:'AL', use:'İstifadə edilsin?', start:'BAŞLA', lead:'REYTİNQ', world:'DÜNYA', country:'ÖLKƏ', you:'SƏN', quick:'SÜRƏTLİ MATÇ', airivals:'7 süni intellekt rəqibinə qarşı — son ölən qazanır!', online_soon:'Onlayn otaqlar tezliklə', finding:'Pilotlar axtarılır…', winner:'QAZANDIN!', eliminated:'ELİMİNASİYA', place:'Yer', alive:'sağ', newrecord:'YENİ REKORD!', soclose:'ÇOX YAXIN İDİ!', boss_in:'BOSS GƏLİR!', boss_out:'BOSS MƏĞLUB!', meteor:'METEOR YAĞIŞI!', coinrush:'QIZIL YAĞIŞI!', nameq:'PİLOT ADINI SEÇ', flagq:'Ölkəni seç', gift:'Günlük Seriya', firstrun:'GÜNÜN İLK QAÇIŞI: 2X QIZIL!', armorbrk:'Zireh qırıldı!', nearmiss:'Yaxın keçid!', hint:'← Sürüşdür → zolaq dəyiş | ↑ qalx | ↓ en', premium:'PREMIUM AÇ', daysleft:'gün qalıb', tier:'Səviyyə' } },
   es: { name: 'ESPAÑOL', d: { play:'JUGAR', garage:'GARAJE', season:'PASE DE TEMPORADA', multi:'MULTIJUGADOR', settings:'AJUSTES', missions:'MISIONES', best:'RÉCORD', coins:'MONEDAS', gameover:'FIN DEL JUEGO', score:'Puntos', dist:'Distancia', collected:'Recogido', near:'Roces', again:'JUGAR OTRA VEZ', mainmenu:'MENÚ', share:'COMPARTIR', continueq:'¿CONTINUAR?', revive:'REVIVIR', giveup:'RENDIRSE', watchad:'VER ANUNCIO · GRATIS', luckybox:'CAJA DE LA SUERTE', openbox:'ABRIR CAJA', claim:'RECLAMAR', sound:'Efectos de sonido', music:'Música', vib:'Vibración', tutorial:'Tutorial', reset:'Reiniciar progreso', lang:'Idioma', feedback:'Sugerencias y errores', profile:'Perfil', powerups:'POTENCIADORES', trails:'ESTELAS', drones:'DRONES', boosters:'DE UN SOLO USO', stats:'ESTADÍSTICAS', ach:'LOGROS', select:'ELEGIR', selected:'ELEGIDO', equip:'EQUIPAR', equipped:'EQUIPADO', buy:'COMPRAR', use:'¿Usar?', start:'EMPEZAR', lead:'CLASIFICACIÓN', world:'MUNDO', country:'PAÍS', you:'TÚ', quick:'PARTIDA RÁPIDA', airivals:'Contra 7 rivales IA: ¡el último vivo gana!', online_soon:'Salas online próximamente', finding:'Buscando pilotos…', winner:'¡GANASTE!', eliminated:'ELIMINADO', place:'Puesto', alive:'vivos', newrecord:'¡NUEVO RÉCORD!', soclose:'¡CASI!', boss_in:'¡VIENE EL JEFE!', boss_out:'¡JEFE DERROTADO!', meteor:'¡LLUVIA DE METEOROS!', coinrush:'¡LLUVIA DE MONEDAS!', nameq:'ELIGE TU NOMBRE', flagq:'Elige tu país', gift:'Racha diaria', firstrun:'¡PRIMERA CARRERA: MONEDAS X2!', armorbrk:'¡Blindaje roto!', nearmiss:'¡Por poco!', hint:'← Desliza → cambia carril | ↑ sube | ↓ baja', premium:'DESBLOQUEAR PREMIUM', daysleft:'días restantes', tier:'Nivel' } },
   pt: { name: 'PORTUGUÊS', d: { play:'JOGAR', garage:'GARAGEM', season:'PASSE DE TEMPORADA', multi:'MULTIJOGADOR', settings:'OPÇÕES', missions:'MISSÕES', best:'RECORDE', coins:'MOEDAS', gameover:'FIM DE JOGO', score:'Pontos', dist:'Distância', collected:'Coletado', near:'Quase-acidentes', again:'JOGAR DE NOVO', mainmenu:'MENU', share:'COMPARTILHAR', continueq:'CONTINUAR?', revive:'REVIVER', giveup:'DESISTIR', watchad:'VER ANÚNCIO · GRÁTIS', luckybox:'CAIXA DA SORTE', openbox:'ABRIR CAIXA', claim:'RESGATAR', sound:'Efeitos sonoros', music:'Música', vib:'Vibração', tutorial:'Tutorial', reset:'Zerar progresso', lang:'Idioma', feedback:'Sugestões e bugs', profile:'Perfil', powerups:'POWER-UPS', trails:'RASTROS', drones:'DRONES', boosters:'USO ÚNICO', stats:'ESTATÍSTICAS', ach:'CONQUISTAS', select:'ESCOLHER', selected:'ESCOLHIDO', equip:'EQUIPAR', equipped:'EQUIPADO', buy:'COMPRAR', use:'Usar?', start:'COMEÇAR', lead:'RANKING', world:'MUNDO', country:'PAÍS', you:'VOCÊ', quick:'PARTIDA RÁPIDA', airivals:'Contra 7 rivais IA: o último vivo vence!', online_soon:'Salas online em breve', finding:'Procurando pilotos…', winner:'VENCEU!', eliminated:'ELIMINADO', place:'Posição', alive:'vivos', newrecord:'NOVO RECORDE!', soclose:'QUASE!', boss_in:'CHEFE CHEGANDO!', boss_out:'CHEFE DERROTADO!', meteor:'CHUVA DE METEOROS!', coinrush:'CHUVA DE MOEDAS!', nameq:'ESCOLHA SEU NOME', flagq:'Escolha seu país', gift:'Sequência diária', firstrun:'PRIMEIRA CORRIDA: MOEDAS 2X!', armorbrk:'Blindagem quebrada!', nearmiss:'Por pouco!', hint:'← Deslize → muda faixa | ↑ sobe | ↓ desce', premium:'DESBLOQUEAR PREMIUM', daysleft:'dias restantes', tier:'Nível' } },
@@ -166,7 +166,7 @@ if (!save.lang || !LANGS[save.lang]) {
 function T(k) {
   const d = LANGS[save.lang] ? LANGS[save.lang].d : {};
   return d[k] !== undefined ? d[k] : (k in LANGS.en.d ? LANGS.en.d[k] : ({
-    play:'PLAY', garage:'GARAGE', season:'SEASON PASS', multi:'MULTIPLAYER', settings:'SETTINGS', missions:'MISSIONS', best:'BEST', coins:'COINS', gameover:'GAME OVER', score:'Score', dist:'Distance', collected:'Collected', near:'Near misses', again:'PLAY AGAIN', mainmenu:'MAIN MENU', share:'SHARE SCORE', continueq:'CONTINUE?', revive:'REVIVE', giveup:'GIVE UP', watchad:'WATCH AD · FREE', luckybox:'LUCKY BOX', openbox:'OPEN LUCKY BOX', claim:'CLAIM', sound:'Sound effects', music:'Music', vib:'Vibration', tutorial:'Tutorial', reset:'Reset progress', lang:'Language', feedback:'Feedback & bug report', profile:'Profile', powerups:'POWER-UPS', trails:'EXHAUST TRAILS', drones:'DRONES', boosters:'ONE-TIME BOOSTERS', stats:'STATS', ach:'ACHIEVEMENTS', select:'SELECT', selected:'SELECTED', equip:'EQUIP', equipped:'EQUIPPED', buy:'BUY', use:'Use boosters?', start:'START', lead:'LEADERBOARD', world:'WORLD', country:'COUNTRY', daily:'DAILY', weekly:'WEEKLY', you:'YOU', quick:'QUICK MATCH', airivals:'Race 7 AI rivals — last one alive wins!', online_soon:'Online rooms coming soon', finding:'Finding pilots…', winner:'WINNER!', eliminated:'ELIMINATED', place:'Place', alive:'alive', newrecord:'NEW RECORD!', soclose:'SO CLOSE!', boss_in:'BOSS INCOMING!', boss_out:'BOSS DEFEATED!', meteor:'METEOR SHOWER!', coinrush:'COIN RUSH!', nameq:'CHOOSE YOUR PILOT NAME', flagq:'Choose your country', lab:'ROCKET LAB', build:'BUILD YOUR OWN ROCKET', createroom:'CREATE ROOM', joinroom:'JOIN ROOM', roomcode:'ROOM CODE', waiting:'Waiting for host…', roomnf:'Room not found', enter:'ENTER', startrace:'START RACE', campaign:'CAMPAIGN', leveldone:'LEVEL COMPLETE!', invite:'Invite Friends', rate:'Rate Us', yourcode:'Your invite code', entercode:"Enter friend's code", redeem:'REDEEM', invited:'Invite reward claimed!', offhint:'📴 You are offline — your score & progress are not saved. Go online!', codeused:'You already used an invite', codeself:"Can't use your own code", codenf:'Code not found', chapter:'Chapter', level:'Level', locked:'🔒 LOCKED', complete:'✓ DONE', gift:'Daily Streak', firstrun:'FIRST RUN TODAY: 2X COINS!', armorbrk:'Armor broken!', nearmiss:'Near miss!', hint:'← Swipe → change lane | ↑ climb | ↓ dive', breathe:'😮‍💨 BREATHE', speedup:'⚡ SPEEDING UP!', premium:'UNLOCK PREMIUM', daysleft:'days left', tier:'Tier'
+    play:'PLAY', garage:'GARAGE', season:'SEASON PASS', multi:'MULTIPLAYER', settings:'SETTINGS', missions:'MISSIONS', best:'BEST', coins:'COINS', gameover:'GAME OVER', score:'Score', dist:'Distance', collected:'Collected', near:'Near misses', again:'PLAY AGAIN', mainmenu:'MAIN MENU', share:'SHARE SCORE', continueq:'CONTINUE?', revive:'REVIVE', giveup:'GIVE UP', watchad:'WATCH AD · FREE', luckybox:'LUCKY BOX', openbox:'OPEN LUCKY BOX', claim:'CLAIM', sound:'Sound effects', music:'Music', vib:'Vibration', tutorial:'Tutorial', reset:'Reset progress', lang:'Language', feedback:'Feedback & bug report', profile:'Profile', powerups:'POWER-UPS', trails:'EXHAUST TRAILS', drones:'DRONES', boosters:'ONE-TIME BOOSTERS', stats:'STATS', ach:'ACHIEVEMENTS', select:'SELECT', selected:'SELECTED', equip:'EQUIP', equipped:'EQUIPPED', buy:'BUY', use:'Use boosters?', start:'START', lead:'LEADERBOARD', world:'WORLD', country:'COUNTRY', daily:'DAILY', weekly:'WEEKLY', you:'YOU', quick:'QUICK MATCH', airivals:'Race 7 AI rivals — last one alive wins!', online_soon:'Online rooms coming soon', finding:'Finding pilots…', winner:'WINNER!', eliminated:'ELIMINATED', place:'Place', alive:'alive', newrecord:'NEW RECORD!', soclose:'SO CLOSE!', boss_in:'BOSS INCOMING!', boss_out:'BOSS DEFEATED!', meteor:'METEOR SHOWER!', coinrush:'COIN RUSH!', nameq:'CHOOSE YOUR PILOT NAME', flagq:'Choose your country', lab:'ROCKET LAB', build:'BUILD YOUR OWN ROCKET', createroom:'CREATE ROOM', joinroom:'JOIN ROOM', roomcode:'ROOM CODE', waiting:'Waiting for host…', roomnf:'Room not found', enter:'ENTER', startrace:'START RACE', campaign:'CAMPAIGN', leveldone:'LEVEL COMPLETE!', invite:'Invite Friends', rate:'Rate Us', yourcode:'Your invite code', entercode:"Enter friend's code", redeem:'REDEEM', invited:'Invite reward claimed!', offhint:'📴 You are offline — your score & progress are not saved. Go online!', codeused:'You already used an invite', codeself:"Can't use your own code", codenf:'Code not found', chapter:'Chapter', level:'Level', locked:'🔒 LOCKED', complete:'✓ DONE', gift:'Daily Streak', firstrun:'FIRST RUN TODAY: 2X COINS!', armorbrk:'Armor broken!', nearmiss:'Near miss!', hint:'← Swipe → change lane | ↑ climb | ↓ dive', breathe:'😮‍💨 BREATHE', speedup:'⚡ SPEEDING UP!', banned_title:'YOU ARE BANNED', banned_reason:'Reason', banned_left:'Time left', banned_perm:'PERMANENT BAN', banned_note:'You cannot access the game from this device.', br_cheat:'Cheating / score manipulation', br_spam:'Spam / advertising', br_abuse:'Harassment / bad behavior', br_name:'Inappropriate username', br_other:'Rule violation', d_day:'days', d_hour:'hours', d_min:'minutes', premium:'UNLOCK PREMIUM', daysleft:'days left', tier:'Tier'
   })[k] || k);
 }
 // statik HTML metinlerini uygula
@@ -391,7 +391,9 @@ const FB = {
   async ban(uid, opts) {
     opts = opts || {};
     const rec = {
-      by: this.uid, t: Date.now(), reason: (opts.reason || '').slice(0, 200),
+      by: this.uid, t: Date.now(),
+      code: opts.code || 'other',                    // çevrilebilir sebep kodu
+      reason: (opts.reason || '').slice(0, 200),     // (eski/serbest metin desteği)
       permanent: !!opts.permanent, until: opts.permanent ? 0 : Date.now() + (opts.days || 7) * 864e5,
     };
     const r = await this.put('bans/' + uid, rec);
@@ -548,8 +550,11 @@ FB.init().then(async () => {
   if (!FB.ok) return;
   // rol tespiti (founder / admin / user) + ban durumu
   await FB.detectRole();
-  FB.banned = await FB.isBanned(FB.uid);
-  if (FB.banned && typeof popup === 'function') setTimeout(() => popup('🚫 Hesabın yasaklandı — skorların kaydedilmiyor', '#ff6b6b'), 1200);
+  const banMap = await FB.fetchBans();
+  const myBan = banMap.get(FB.uid);
+  FB.banned = FB.banActive(myBan);
+  // banlıysa: oyuna hiç giremez — siyah kilit ekranı (sebep + kalan süre)
+  if (FB.banned) { setTimeout(() => window.showBanScreen(myBan), 900); return; }
   if (typeof window.refreshStaffUI === 'function') window.refreshStaffUI(); // panel butonunu role göre göster
   const cl = await FB.cloudLoad();
   mergeCloud(cl);
@@ -3565,9 +3570,13 @@ setTimeout(() => {
         bb.onclick = async () => {
           let perm = false;
           if (FB.role === 'founder') perm = confirm('KALICI ban mı?\nTamam = kalıcı · İptal = 7 günlük geçici');
-          const reason = prompt('Ban sebebi (opsiyonel):', '') || '';
+          // Sebep KOD olarak seçilir → banlanan kişiye KENDİ dilinde gösterilir
+          const codes = ['cheat', 'spam', 'abuse', 'name', 'other'];
+          const pick = prompt('Ban sebebi:\n1) Hile / skor manipülasyonu\n2) Spam / reklam\n3) Hakaret / kötü davranış\n4) Uygunsuz kullanıcı adı\n5) Diğer', '1');
+          if (pick === null) { bb.textContent = '🔨'; return; }
+          const code = codes[(parseInt(pick, 10) || 1) - 1] || 'other';
           bb.textContent = '…';
-          const ok = await FB.ban(r.id, { permanent: perm, days: 7, reason: reason });
+          const ok = await FB.ban(r.id, { permanent: perm, days: 7, code: code });
           popup && popup(ok ? ('🔨 Banlandı (' + (perm ? 'kalıcı' : '7 gün') + ')') : '❌ Ban başarısız (yetki?)', ok ? '#ff8a8a' : '#ff5555');
           banPanel();
         };
@@ -3587,7 +3596,8 @@ setTimeout(() => {
       const id = e[0], b = e[1];
       const line = elc('div', 'display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #2a2140');
       const nm = elc('span', 'flex:1;overflow:hidden;font-size:11px;color:#c99');
-      nm.textContent = id + ' · ' + (b.permanent ? 'KALICI' : ('⏳' + Math.ceil((b.until - Date.now()) / 864e5) + 'g')) + (b.reason ? (' · ' + b.reason) : '');
+      nm.textContent = id + ' · ' + (b.permanent ? 'KALICI' : ('⏳' + Math.ceil((b.until - Date.now()) / 864e5) + 'g')) +
+        ' · ' + (b.code ? T('br_' + b.code) : (b.reason || ''));
       const ub = elc('button', 'background:#166b3a;color:#fff;border:none;border-radius:8px;padding:6px 9px;font:700 12px "Segoe UI";cursor:pointer', '♻️');
       ub.onclick = async () => { ub.textContent = '…'; await FB.unban(id); popup && popup('♻️ Ban kaldırıldı', '#9dff70'); banPanel(); };
       line.appendChild(nm); line.appendChild(ub); sM.body.appendChild(line);
@@ -3660,3 +3670,81 @@ setTimeout(() => {
     if (!sM.w.classList.contains('on')) stopT();
   }, 500);
 })();
+
+// ==================== 🚫 BAN EKRANI (banlı kullanıcı oyuna giremez) ====================
+// Siyah tam ekran + kırmızı kalkan + "BANLANDINIZ" + sebep (kullanıcının dilinde)
+// + kalan süre. Hiçbir şeye basılamaz; kapatma yolu yoktur.
+window.showBanScreen = function (rec) {
+  if (document.getElementById('banScreen')) return;
+  rec = rec || {};
+  const wrap = document.createElement('div');
+  wrap.id = 'banScreen';
+  wrap.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#000;color:#fff;' +
+    'display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;' +
+    'padding:24px;font-family:"Segoe UI",Arial,sans-serif;user-select:none';
+
+  // kırmızı kalkan (SVG — her cihazda aynı görünür, emoji fontuna bağlı değil)
+  const shield = document.createElement('div');
+  shield.style.cssText = 'margin-bottom:14px;filter:drop-shadow(0 0 22px rgba(225,29,56,.85))';
+  shield.innerHTML =
+    '<svg width="104" height="118" viewBox="0 0 104 118" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M52 4 L96 20 V58 C96 86 76 104 52 114 C28 104 8 86 8 58 V20 Z" fill="#e11d38" stroke="#ff5566" stroke-width="4" stroke-linejoin="round"/>' +
+    '<path d="M52 16 L86 28 V58 C86 80 70 94 52 102 C34 94 18 80 18 58 V28 Z" fill="#8f0d20" opacity=".55"/>' +
+    '<path d="M36 44 L68 76 M68 44 L36 76" stroke="#fff" stroke-width="9" stroke-linecap="round"/>' +
+    '</svg>';
+  wrap.appendChild(shield);
+
+  const title = document.createElement('div');
+  title.textContent = T('banned_title');
+  title.style.cssText = 'font:800 30px/1.2 "Segoe UI";color:#ff2b45;letter-spacing:1px;' +
+    'text-shadow:0 0 18px rgba(225,29,56,.7);margin-bottom:6px';
+  wrap.appendChild(title);
+
+  const note = document.createElement('div');
+  note.textContent = T('banned_note');
+  note.style.cssText = 'font-size:13px;color:#8a8a94;margin-bottom:22px';
+  wrap.appendChild(note);
+
+  // sebep (kod varsa kullanıcının diline çevrilir; yoksa serbest metin)
+  const reasonTxt = rec.code ? T('br_' + rec.code) : (rec.reason || T('br_other'));
+  const rBox = document.createElement('div');
+  rBox.style.cssText = 'background:#140508;border:1px solid #4a1020;border-radius:12px;' +
+    'padding:14px 18px;margin-bottom:12px;max-width:340px;width:100%';
+  const rLabel = document.createElement('div');
+  rLabel.textContent = T('banned_reason');
+  rLabel.style.cssText = 'font-size:11px;color:#8a8a94;letter-spacing:1px;margin-bottom:4px';
+  const rVal = document.createElement('div');
+  rVal.textContent = reasonTxt;               // textContent → XSS yok
+  rVal.style.cssText = 'font:700 16px "Segoe UI";color:#ffb3bd';
+  rBox.appendChild(rLabel); rBox.appendChild(rVal);
+  wrap.appendChild(rBox);
+
+  // süre kutusu
+  const tBox = document.createElement('div');
+  tBox.style.cssText = 'background:#140508;border:1px solid #4a1020;border-radius:12px;' +
+    'padding:14px 18px;max-width:340px;width:100%';
+  const tLabel = document.createElement('div');
+  tLabel.textContent = T('banned_left');
+  tLabel.style.cssText = 'font-size:11px;color:#8a8a94;letter-spacing:1px;margin-bottom:4px';
+  const tVal = document.createElement('div');
+  tVal.style.cssText = 'font:700 18px "Segoe UI";color:#ff2b45';
+  tBox.appendChild(tLabel); tBox.appendChild(tVal);
+  wrap.appendChild(tBox);
+
+  function fmtLeft() {
+    if (rec.permanent === true || !rec.until) { tVal.textContent = T('banned_perm'); return; }
+    const ms = rec.until - Date.now();
+    if (ms <= 0) { location.reload(); return; }   // süre doldu → oyun geri açılır
+    const d = Math.floor(ms / 864e5), h = Math.floor((ms % 864e5) / 36e5), m = Math.floor((ms % 36e5) / 6e4);
+    tVal.textContent = d > 0 ? (d + ' ' + T('d_day') + ' ' + h + ' ' + T('d_hour'))
+      : h > 0 ? (h + ' ' + T('d_hour') + ' ' + m + ' ' + T('d_min'))
+      : (m + ' ' + T('d_min'));
+  }
+  fmtLeft();
+  setInterval(fmtLeft, 30000);
+
+  document.body.appendChild(wrap);
+  // sesi kes ve oyunu durdur
+  try { save.muted = true; if (typeof Music !== 'undefined' && Music.stop) Music.stop(); } catch (e) {}
+  try { if (typeof state !== 'undefined' && typeof S !== 'undefined') state = S.MENU; } catch (e) {}
+};
