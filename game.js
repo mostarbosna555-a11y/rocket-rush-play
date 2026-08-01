@@ -3748,3 +3748,79 @@ window.showBanScreen = function (rec) {
   try { save.muted = true; if (typeof Music !== 'undefined' && Music.stop) Music.stop(); } catch (e) {}
   try { if (typeof state !== 'undefined' && typeof S !== 'undefined') state = S.MENU; } catch (e) {}
 };
+
+// ==================== 🗺️ MİNİ HARİTA (sol üst) ====================
+// KURAL: harita ASLA sisin ilerisini göstermez. Yalnızca sahnede HÂLİHAZIRDA
+// var olan (havuzda aktif) nesneler çizilir ve her nokta, oyuncunun gerçekte
+// gördüğü sis yoğunluğuyla AYNI saydamlıkta belirir. Yani harita bilgi sızdırmaz
+// ve ek render maliyeti yoktur (sadece mevcut nesnelerin konumu okunur).
+(function () {
+  const W = 78, H = 108;                    // css px
+  const cv = document.createElement('canvas');
+  cv.id = 'minimap';
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = W * dpr; cv.height = H * dpr;
+  cv.style.cssText = 'position:fixed;left:10px;top:calc(env(safe-area-inset-top,0px) + 104px);' +
+    'width:' + W + 'px;height:' + H + 'px;z-index:5;pointer-events:none;display:none;' +
+    'border-radius:10px;background:rgba(0,0,16,.42);box-shadow:0 2px 10px rgba(0,0,0,.45)';
+  document.body.appendChild(cv);
+  const g = cv.getContext('2d');
+  g.scale(dpr, dpr);
+
+  const POOLS = [
+    { p: () => rockPool,    c: '#ff4455', r: 2.6 },   // engeller
+    { p: () => barrierPool, c: '#ff7a1a', r: 2.6 },
+    { p: () => laserPool,   c: '#ff2bd0', r: 2.4 },
+    { p: () => coinPool,    c: '#ffd54d', r: 1.7 },   // altın
+    { p: () => powerupPool, c: '#39e6ee', r: 2.4 },   // güçlendirme
+  ];
+
+  function draw() {
+    const playing = (typeof state !== 'undefined' && typeof S !== 'undefined' && state === S.PLAY);
+    cv.style.display = playing ? 'block' : 'none';
+    if (!playing) return;
+
+    const near = scene.fog ? scene.fog.near : 90;
+    const far = scene.fog ? scene.fog.far : 260;      // sis sınırı = harita sınırı
+    g.clearRect(0, 0, W, H);
+
+    // şerit zemini
+    g.fillStyle = 'rgba(255,255,255,.06)';
+    g.fillRect(W * 0.22, 0, W * 0.56, H);
+    g.strokeStyle = 'rgba(255,255,255,.10)'; g.lineWidth = 1;
+    for (const lx of [-3.2, 3.2]) { const x = W / 2 + (lx / 12) * W; g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); }
+
+    // nesneler — yalnız sis içindekiler, sis kadar sönük
+    for (const src of POOLS) {
+      let pool; try { pool = src.p(); } catch (e) { continue; }
+      if (!pool) continue;
+      for (const it of pool) {
+        if (!it.active || !it.mesh) continue;
+        const dist = -it.mesh.position.z;                 // önümüzdeki mesafe
+        if (dist <= 0 || dist >= far) continue;           // SİS ÖTESİ → ÇİZME
+        const a = Math.max(0, Math.min(1, (far - dist) / (far - near))); // sis saydamlığı
+        if (a <= 0.02) continue;
+        const x = W / 2 + (it.mesh.position.x / 12) * W;
+        if (x < 2 || x > W - 2) continue;
+        const y = H - 12 - (dist / far) * (H - 16);
+        g.globalAlpha = a;
+        g.fillStyle = src.c;
+        g.beginPath(); g.arc(x, y, src.r, 0, 6.283); g.fill();
+      }
+    }
+    g.globalAlpha = 1;
+
+    // üst kenar: sis perdesi (ötesi bilinmez)
+    const grd = g.createLinearGradient(0, 0, 0, 34);
+    grd.addColorStop(0, 'rgba(0,0,16,.95)');
+    grd.addColorStop(1, 'rgba(0,0,16,0)');
+    g.fillStyle = grd; g.fillRect(0, 0, W, 34);
+
+    // oyuncu (alt orta, seçili şeritte)
+    const px = W / 2 + ((typeof LANES !== 'undefined' && typeof targetLane === 'number' ? LANES[targetLane] : 0) / 12) * W;
+    g.fillStyle = '#9dff70';
+    g.beginPath(); g.moveTo(px, H - 6); g.lineTo(px - 4.5, H - 1); g.lineTo(px + 4.5, H - 1); g.closePath(); g.fill();
+  }
+
+  setInterval(draw, 60);   // ~16 fps — göz için yeterli, işlemciye yük değil
+})();
