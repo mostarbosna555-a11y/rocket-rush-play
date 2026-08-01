@@ -4,16 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Rocket Rush</title>
-<!-- ===== PWA / "Ana Ekrana Ekle" (iPhone + Android tam ekran uygulama gibi) ===== -->
-<meta name="theme-color" content="#05010f">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Rocket Rush">
-<meta name="description" content="Rocket Rush — sonsuz uzay koşusu. Bir BOSNA GAMES yapımı.">
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="icons/icon-180.png">
-<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; }
   html,body { width:100%; height:100%; overflow:hidden; background:#05010f; font-family:'Segoe UI',Arial,sans-serif; touch-action:none; }
@@ -334,6 +324,7 @@
   </div>
   <div class="missionBox"><h4>📋 <span data-i18n="missions">MISSIONS</span></h4><div id="menuMissions"></div></div>
   <button class="btn" id="playBtn">▶ &nbsp;<span data-i18n="play">PLAY</span></button>
+  <button class="btn secondary" id="planetsBtn" style="background:linear-gradient(180deg,#3fb8d8,#1a6f95);box-shadow:0 6px 0 #0e4761, 0 12px 28px rgba(60,180,220,.35);">🪐 <span data-i18n="planets">PLANETS</span></button>
   <button class="btn secondary" id="campaignBtn" style="background:linear-gradient(180deg,#8a5cff,#5a2ac8);box-shadow:0 6px 0 #3a1478, 0 12px 28px rgba(120,80,220,.35);">📖 <span data-i18n="campaign">CAMPAIGN</span></button>
   <button class="btn" id="multiBtn" style="background:linear-gradient(180deg,#e85a8a,#b0246a);box-shadow:0 6px 0 #6d1240, 0 12px 28px rgba(220,60,130,.35);">⚔️ <span data-i18n="multi">MULTIPLAYER</span></button>
   <button class="btn secondary" id="garageBtn">🚀 <span data-i18n="garage">GARAGE</span></button>
@@ -555,11 +546,5 @@
 <script src="three.min.js"></script>
 <script src="firebase-config.js"></script>
 <script src="game.js"></script>
-<script>
-  // Offline oynanabilsin diye service worker (varsa) kaydet
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
-  }
-</script>
 </body>
 </html>
