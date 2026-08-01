@@ -4091,7 +4091,7 @@ window.openModConsole = function () {
         '  ban <name>       ban a user (asks reason + time)\n' +
         '  unban <name>     remove ban\n' +
         '  bans             active bans\n' +
-        '  wipe <name>      delete a score (cheat cleanup)\n  strikes <name>   auto-punish counter\n  clearstrikes <n> reset counter (founder)\n' +
+        '  wipe <name>      delete a score (cheat cleanup)\n  strikes <name>   auto-punish counter\n  strike <name>    +1 strike & apply next step (founder)\n  clearstrikes <n> reset counter (founder)\n' +
         'USERS\n' +
         '  list             all known accounts\n' +
         '  who <name>       user info\n' +
@@ -4271,6 +4271,27 @@ window.openModConsole = function () {
       const n = st.count || 0;
       const next = ['warning', '1 hour', '1 day', '1 week', '1 year', 'permanent'][Math.min(n, 5)];
       line('   ' + u[0].name + '  ·  strikes: ' + n + '  ·  next: ' + next + (st.reason ? ('  ·  last: ' + st.reason) : ''));
+      return;
+    }
+    // elle bir ihlal ekle → merdivenin bir sonraki cezasını uygula (test + moderasyon)
+    if (cmd === 'strike') {
+      if (FB.role !== 'founder') { err('founder only'); return; }
+      if (!arg) { err('usage: strike <name>'); return; }
+      const u = await findUser(arg);
+      if (!u.length) { err('user not found: ' + arg + notFoundHint()); return; }
+      if (u.length > 1) { err('multiple matches:'); u.slice(0, 8).forEach(x => line('   ' + x.name)); return; }
+      const t = u[0];
+      if (t.id === FOUNDER_UID) { err('cannot strike the founder'); return; }
+      const st = await FB.strikes(t.id);
+      const n = (st.count || 0) + 1;
+      await FB.put('strikes/' + t.id, { count: n, last: Date.now(), reason: 'manual' });
+      const step = AUTO_LADDER[Math.min(n - 1, AUTO_LADDER.length - 1)];
+      if (step.warn) { sys('⚠ strike ' + n + '/6 → WARNING only (no ban yet) for ' + t.name); return; }
+      const ms = step.permanent ? 0 : (step.hours ? step.hours * 36e5 : step.days * 864e5);
+      const ok = await FB.ban(t.id, { permanent: !!step.permanent, days: (ms / 864e5) || 1, code: 'cheat' });
+      const label = step.permanent ? 'PERMANENT' : (step.hours ? step.hours + ' hour' : step.days + ' day(s)');
+      sys(ok ? ('✔ strike ' + n + '/6 → ' + label + ' ban applied to ' + t.name)
+             : ('✘ strike recorded (' + n + ') but ban failed — publish latest rules'));
       return;
     }
     if (cmd === 'clearstrikes') {
