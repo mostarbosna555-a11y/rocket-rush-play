@@ -3937,6 +3937,8 @@ window.openModConsole = function () {
   async function findUser(q) {
     const needle = q.toLowerCase();
     const map = new Map();
+    await FB.refreshToken();           // her aramadan önce oturumu tazele (401/403 olmasın)
+    FB._bansAt = 0; FB.rowsAt = 0;     // önbellekleri atla — daima taze veri
     try { for (const p of await FB.listPlayers()) map.set(p.id, { id: p.id, name: p.name || 'Pilot', best: p.best || 0 }); } catch (e) {}
     try { for (const r of (await FB.fetchTop()) || []) { const e = map.get(r.id) || { id: r.id, name: r.name, best: 0 }; e.name = r.name || e.name; e.best = Math.max(e.best, r.s || 0); map.set(r.id, e); } } catch (e) {}
     // isim kaynakları: destek talepleri + admin başvuruları (players'a girmemiş
@@ -4051,6 +4053,13 @@ window.openModConsole = function () {
           line('   ' + coll.padEnd(15) + ' HTTP ' + r.status + (r.status === 200 ? ('  → ' + n + ' doc') : ('  → ' + ((j.error && j.error.status) || 'error'))));
         } catch (e) { line('   ' + coll.padEnd(15) + ' network error'); }
       }
+      // fonksiyon seviyesi: sarmalayıcılar gerçekte kaç kayıt döndürüyor?
+      line('   --- wrappers ---');
+      try { const p = await FB.listPlayers(); line('   listPlayers()    → ' + p.length + ' (status ' + FB.playersStatus + ')' + (p.length ? ('  first: ' + (p[0].name || '?')) : '')); } catch (e) { line('   listPlayers() threw'); }
+      try { const b = await FB.fetchBans(); line('   fetchBans()      → ' + b.size + ' (active ' + [...b.values()].filter(x => FB.banActive(x)).length + ')'); } catch (e) { line('   fetchBans() threw'); }
+      try { const t = await FB.listTickets(); line('   listTickets()    → ' + t.length); } catch (e) {}
+      try { const a = await FB.fetchAdmins(); line('   fetchAdmins()    → ' + a.size); } catch (e) {}
+      sys('if HTTP is 200 but a wrapper shows 0 → tell me this line');
       sys('if any line says PERMISSION_DENIED → publish the latest firestore rules');
       return;
     }
