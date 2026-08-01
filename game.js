@@ -456,7 +456,16 @@ const FB = {
   lastStatus: 0, lastUrl: '',      // teşhis için son isteğin sonucu
   async authFetch(url, opts) {
     opts = opts || {};
-    const mk = () => Object.assign({}, opts, { headers: Object.assign({}, opts.headers || {}, { Authorization: 'Bearer ' + this.token }) });
+    // WebView/HTTP önbelleği Firestore yanıtlarını bayatlatıyordu → daima ağdan al
+    const bust = url + (url.indexOf('?') >= 0 ? '&' : '?') + '_=' + Date.now();
+    const mk = () => Object.assign({}, opts, {
+      cache: 'no-store',
+      headers: Object.assign({}, opts.headers || {}, {
+        Authorization: 'Bearer ' + this.token,
+        'Cache-Control': 'no-cache',
+      }),
+    });
+    url = bust;
     let res = await fetch(url, mk());
     if (res.status === 401 || res.status === 403) { if (await this.refreshToken()) res = await fetch(url, mk()); }
     this.lastStatus = res.status; this.lastUrl = url;
