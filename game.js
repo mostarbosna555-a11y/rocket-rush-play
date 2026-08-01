@@ -992,16 +992,16 @@ const THEMES = [
 // aşılınca KEŞFEDİLİR (kalıcı), keşif ödülü verilir ve galeriye eklenir.
 // Keşfedilen gezegen menüden seçilip başlangıç dünyası yapılabilir.
 const PLANETS = [
-  { id: 'terra',   icon: '🌍', name: 'TERRA NOVA',  need: 0,     reward: 0,     coinMul: 1.0, scoreMul: 1.0, fog: 0x05010f, ground: 0x141033, rail: 0x3d3d8f, line: 0x3d3d8f, desc: 'Yolculuğun başladığı mavi dünya.' },
-  { id: 'ignis',   icon: '🌋', name: 'IGNIS',       need: 1500,  reward: 500,   coinMul: 1.1, scoreMul: 1.1, fog: 0x160301, ground: 0x2a0d08, rail: 0xff5522, line: 0x993311, desc: 'Lav nehirleri ve kızgın kayalar.' },
-  { id: 'glacies', icon: '🧊', name: 'GLACIES',     need: 3500,  reward: 900,   coinMul: 1.15, scoreMul: 1.15, fog: 0x02121c, ground: 0x0d2733, rail: 0x44ddff, line: 0x1a5566, desc: 'Sonsuz buz tünelleri.' },
-  { id: 'nebula',  icon: '🔮', name: 'NEBULA PRIME', need: 6000,  reward: 1400,  coinMul: 1.2, scoreMul: 1.2, fog: 0x12021a, ground: 0x220d33, rail: 0xcc55ff, line: 0x66337f, desc: 'Mor bulutsunun kalbi.' },
-  { id: 'cyber',   icon: '💚', name: 'CYBER-9',     need: 9000,  reward: 2000,  coinMul: 1.25, scoreMul: 1.25, fog: 0x001208, ground: 0x02180a, rail: 0x00ff88, line: 0x00aa55, desc: 'Yapay zekâların terk ettiği ızgara dünya.' },
-  { id: 'solaris', icon: '☀️', name: 'SOLARIS',     need: 13000, reward: 2800,  coinMul: 1.3, scoreMul: 1.3, fog: 0x1a0e00, ground: 0x2a1a05, rail: 0xffbb00, line: 0xaa7700, desc: 'Güneş fırtınalarının merkezi.' },
-  { id: 'abyss',   icon: '🌑', name: 'ABYSS',       need: 18000, reward: 4000,  coinMul: 1.4, scoreMul: 1.4, fog: 0x000000, ground: 0x0a0a12, rail: 0x445566, line: 0x223344, desc: 'Işığın kaçamadığı karanlık.' },
-  { id: 'aurora',  icon: '🌈', name: 'AURORA',      need: 24000, reward: 5500,  coinMul: 1.5, scoreMul: 1.5, fog: 0x001a18, ground: 0x03302c, rail: 0x2effd5, line: 0x11998a, desc: 'Gökyüzü renklerle yanar.' },
-  { id: 'crimson', icon: '🔴', name: 'CRIMSON',     need: 32000, reward: 7500,  coinMul: 1.6, scoreMul: 1.6, fog: 0x1a0006, ground: 0x330011, rail: 0xff2b55, line: 0x99001f, desc: 'Kızıl fırtınalar diyarı.' },
-  { id: 'void',    icon: '🕳️', name: 'THE VOID',    need: 45000, reward: 12000, coinMul: 2.0, scoreMul: 2.0, fog: 0x02000a, ground: 0x0c0020, rail: 0x8844ff, line: 0x441199, desc: 'Haritanın bittiği yer. Efsane pilotlar için.' },
+  { id: 'terra',   icon: '🌍', name: 'TERRA NOVA',  need: 0,     reward: 0,     coinMul: 1.0, scoreMul: 1.0, fog: 0x05010f, ground: 0x141033, rail: 0x3d3d8f, line: 0x3d3d8f, desc: 'Yolculuğun başladığı mavi dünya.', obs: { rock:0.42, bar:0.33, laser:0.25, move:1.0, dense:0.35, rockA:0x6b7a99, rockB:0x4f5d78, fogMul:1.00, hazard:'Dengeli' } },
+  { id: 'ignis',   icon: '🌋', name: 'IGNIS',       need: 1500,  reward: 500,   coinMul: 1.1, scoreMul: 1.1, fog: 0x160301, ground: 0x2a0d08, rail: 0xff5522, line: 0x993311, desc: 'Lav nehirleri ve kızgın kayalar.', obs: { rock:0.60, bar:0.20, laser:0.20, move:1.6, dense:0.40, rockA:0xff5522, rockB:0x992a0e, fogMul:0.95, hazard:'Lav bombaları — savrulan kayalar' } },
+  { id: 'glacies', icon: '🧊', name: 'GLACIES',     need: 3500,  reward: 900,   coinMul: 1.15, scoreMul: 1.15, fog: 0x02121c, ground: 0x0d2733, rail: 0x44ddff, line: 0x1a5566, desc: 'Sonsuz buz tünelleri.', obs: { rock:0.25, bar:0.55, laser:0.20, move:0.7, dense:0.40, rockA:0x9fe8ff, rockB:0x5fb6d8, fogMul:0.90, hazard:'Buz duvarları' } },
+  { id: 'nebula',  icon: '🔮', name: 'NEBULA PRIME', need: 6000,  reward: 1400,  coinMul: 1.2, scoreMul: 1.2, fog: 0x12021a, ground: 0x220d33, rail: 0xcc55ff, line: 0x66337f, desc: 'Mor bulutsunun kalbi.', obs: { rock:0.30, bar:0.25, laser:0.45, move:1.2, dense:0.42, rockA:0xcc55ff, rockB:0x7a2f9e, fogMul:1.00, hazard:'Enerji kapıları' } },
+  { id: 'cyber',   icon: '💚', name: 'CYBER-9',     need: 9000,  reward: 2000,  coinMul: 1.25, scoreMul: 1.25, fog: 0x001208, ground: 0x02180a, rail: 0x00ff88, line: 0x00aa55, desc: 'Yapay zekâların terk ettiği ızgara dünya.', obs: { rock:0.20, bar:0.25, laser:0.55, move:1.0, dense:0.45, rockA:0x00ff88, rockB:0x0a8a4a, fogMul:1.00, hazard:'Lazer ızgarası' } },
+  { id: 'solaris', icon: '☀️', name: 'SOLARIS',     need: 13000, reward: 2800,  coinMul: 1.3, scoreMul: 1.3, fog: 0x1a0e00, ground: 0x2a1a05, rail: 0xffbb00, line: 0xaa7700, desc: 'Güneş fırtınalarının merkezi.', obs: { rock:0.55, bar:0.20, laser:0.25, move:1.8, dense:0.48, rockA:0xffbb00, rockB:0xaa6a00, fogMul:1.00, hazard:'Güneş patlamaları' } },
+  { id: 'abyss',   icon: '🌑', name: 'ABYSS',       need: 18000, reward: 4000,  coinMul: 1.4, scoreMul: 1.4, fog: 0x000000, ground: 0x0a0a12, rail: 0x445566, line: 0x223344, desc: 'Işığın kaçamadığı karanlık.', obs: { rock:0.45, bar:0.30, laser:0.25, move:1.4, dense:0.50, rockA:0x39424f, rockB:0x1e242e, fogMul:0.62, hazard:'Kör karanlık — görüş çok kısa' } },
+  { id: 'aurora',  icon: '🌈', name: 'AURORA',      need: 24000, reward: 5500,  coinMul: 1.5, scoreMul: 1.5, fog: 0x001a18, ground: 0x03302c, rail: 0x2effd5, line: 0x11998a, desc: 'Gökyüzü renklerle yanar.', obs: { rock:0.35, bar:0.25, laser:0.40, move:2.0, dense:0.50, rockA:0x2effd5, rockB:0x0e8f79, fogMul:1.05, hazard:'Sürekli salınan engeller' } },
+  { id: 'crimson', icon: '🔴', name: 'CRIMSON',     need: 32000, reward: 7500,  coinMul: 1.6, scoreMul: 1.6, fog: 0x1a0006, ground: 0x330011, rail: 0xff2b55, line: 0x99001f, desc: 'Kızıl fırtınalar diyarı.', obs: { rock:0.45, bar:0.25, laser:0.30, move:1.7, dense:0.60, rockA:0xff2b55, rockB:0x99001f, fogMul:0.85, hazard:'Yoğun kızıl fırtına' } },
+  { id: 'void',    icon: '🕳️', name: 'THE VOID',    need: 45000, reward: 12000, coinMul: 2.0, scoreMul: 2.0, fog: 0x02000a, ground: 0x0c0020, rail: 0x8844ff, line: 0x441199, desc: 'Haritanın bittiği yer. Efsane pilotlar için.', obs: { rock:0.34, bar:0.28, laser:0.38, move:2.2, dense:0.70, rockA:0x8844ff, rockB:0x3d1180, fogMul:0.70, hazard:'Her şey aynı anda' } },
 ];
 function planetById(id) { return PLANETS.find(p => p.id === id) || PLANETS[0]; }
 function planetOf() { return planetById(save.planet); }
@@ -1444,11 +1444,20 @@ const ITEMS = [
 let rocketDef = null; // resetRun'da getRocketDef() ile dolar
 
 function planetIndex() { const i = PLANETS.findIndex(p => p.id === save.planet); return i < 0 ? 0 : i; }
+const FOG_NEAR = 90, FOG_FAR = FAR_PLANE - 40;   // temel sis (gezegene göre ölçeklenir)
 function snapTheme(i) {
   themeIdx = i;
   const th = PLANETS[i % PLANETS.length];
   themeTarget.fog.setHex(th.fog); themeTarget.ground.setHex(th.ground);
   themeTarget.rail.setHex(th.rail); themeTarget.line.setHex(th.line);
+  // gezegene özel engel görünümü + görüş mesafesi
+  const ob = th.obs || PLANETS[0].obs;
+  if (ob) {
+    MAT.rockA.color.setHex(ob.rockA);
+    MAT.rockB.color.setHex(ob.rockB);
+    // ABYSS/VOID gibi karanlık dünyalarda görüş kısalır → mini harita da otomatik kısalır
+    if (scene.fog) { scene.fog.near = FOG_NEAR * ob.fogMul; scene.fog.far = FOG_FAR * ob.fogMul; }
+  }
 }
 
 // Koşu sırasında yeni gezegen keşfi (kalıcı + ödüllü)
@@ -1520,12 +1529,14 @@ function resetRun() {
 function spawnWave(zBase) {
   if (zBase === undefined) zBase = SPAWN_Z;
   const lanes = [0, 1, 2];
-  const obstacleCount = Math.random() < 0.35 ? 2 : 1;
+  // 🪐 içinde bulunulan gezegenin engel profili (yoğunluk / tür dağılımı / hareket)
+  const OB = (PLANETS[themeIdx % PLANETS.length] || PLANETS[0]).obs || PLANETS[0].obs;
+  const obstacleCount = Math.random() < OB.dense ? 2 : 1;
   for (let i = 0; i < obstacleCount; i++) {
     const li = lanes.splice(Math.floor(Math.random() * lanes.length), 1)[0];
     const x = LANES[li];
     const roll = Math.random();
-    if (roll < 0.42) {
+    if (roll < OB.rock) {
       const r = acquire(rockPool);
       if (r) {
         const high = Math.random() < 0.4;
@@ -1535,11 +1546,11 @@ function spawnWave(zBase) {
         r.mesh.scale.set(s, s, s);
         r.counted = false;
         // zorlaştıkça bazı kayalar şeritler arasında salınır
-        r.moving = elapsed > 25 && Math.random() < Math.min(0.45, elapsed / 150);
+        r.moving = elapsed > 25 && Math.random() < Math.min(0.6, (elapsed / 150) * OB.move);
         r.baseX = x; r.phase = Math.random() * 6.28;
         r.mesh.material = r.moving ? MAT.rockHot : (Math.random() < 0.5 ? MAT.rockA : MAT.rockB);
       }
-    } else if (roll < 0.75 || elapsed < 18) {
+    } else if (roll < OB.rock + OB.bar || elapsed < 18) {
       const b = acquire(barrierPool);
       if (b) {
         const high = Math.random() < 0.35;
@@ -4552,6 +4563,12 @@ window.openModConsole = function () {
       ml.className = 'plMul';
       ml.textContent = found ? ('🪙 x' + p.coinMul.toFixed(2) + '   ⭐ x' + p.scoreMul.toFixed(2)) : ('🎁 +' + fmt(p.reward));
       info.appendChild(nm); info.appendChild(ds); info.appendChild(ml);
+      if (found && p.obs && p.obs.hazard) {
+        const hz = document.createElement('div');
+        hz.style.cssText = 'font-size:11px;color:#ff9a7a;margin-top:2px';
+        hz.textContent = '⚠ ' + p.obs.hazard;
+        info.appendChild(hz);
+      }
       row.appendChild(info);
 
       const btn = document.createElement('button');
