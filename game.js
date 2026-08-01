@@ -992,16 +992,16 @@ const THEMES = [
 // aşılınca KEŞFEDİLİR (kalıcı), keşif ödülü verilir ve galeriye eklenir.
 // Keşfedilen gezegen menüden seçilip başlangıç dünyası yapılabilir.
 const PLANETS = [
-  { id: 'terra',   icon: '🌍', name: 'TERRA NOVA',  need: 0,     reward: 0,     coinMul: 1.0, scoreMul: 1.0, fog: 0x05010f, ground: 0x141033, rail: 0x3d3d8f, line: 0x3d3d8f, desc: 'Yolculuğun başladığı mavi dünya.', obs: { rock:0.42, bar:0.33, laser:0.25, move:1.0, dense:0.35, rockA:0x6b7a99, rockB:0x4f5d78, fogMul:1.00, hazard:'Dengeli' } },
-  { id: 'ignis',   icon: '🌋', name: 'IGNIS',       need: 1500,  reward: 500,   coinMul: 1.1, scoreMul: 1.1, fog: 0x160301, ground: 0x2a0d08, rail: 0xff5522, line: 0x993311, desc: 'Lav nehirleri ve kızgın kayalar.', obs: { rock:0.60, bar:0.20, laser:0.20, move:1.6, dense:0.40, rockA:0xff5522, rockB:0x992a0e, fogMul:0.95, hazard:'Lav bombaları — savrulan kayalar' } },
-  { id: 'glacies', icon: '🧊', name: 'GLACIES',     need: 3500,  reward: 900,   coinMul: 1.15, scoreMul: 1.15, fog: 0x02121c, ground: 0x0d2733, rail: 0x44ddff, line: 0x1a5566, desc: 'Sonsuz buz tünelleri.', obs: { rock:0.25, bar:0.55, laser:0.20, move:0.7, dense:0.40, rockA:0x9fe8ff, rockB:0x5fb6d8, fogMul:0.90, hazard:'Buz duvarları' } },
-  { id: 'nebula',  icon: '🔮', name: 'NEBULA PRIME', need: 6000,  reward: 1400,  coinMul: 1.2, scoreMul: 1.2, fog: 0x12021a, ground: 0x220d33, rail: 0xcc55ff, line: 0x66337f, desc: 'Mor bulutsunun kalbi.', obs: { rock:0.30, bar:0.25, laser:0.45, move:1.2, dense:0.42, rockA:0xcc55ff, rockB:0x7a2f9e, fogMul:1.00, hazard:'Enerji kapıları' } },
-  { id: 'cyber',   icon: '💚', name: 'CYBER-9',     need: 9000,  reward: 2000,  coinMul: 1.25, scoreMul: 1.25, fog: 0x001208, ground: 0x02180a, rail: 0x00ff88, line: 0x00aa55, desc: 'Yapay zekâların terk ettiği ızgara dünya.', obs: { rock:0.20, bar:0.25, laser:0.55, move:1.0, dense:0.45, rockA:0x00ff88, rockB:0x0a8a4a, fogMul:1.00, hazard:'Lazer ızgarası' } },
-  { id: 'solaris', icon: '☀️', name: 'SOLARIS',     need: 13000, reward: 2800,  coinMul: 1.3, scoreMul: 1.3, fog: 0x1a0e00, ground: 0x2a1a05, rail: 0xffbb00, line: 0xaa7700, desc: 'Güneş fırtınalarının merkezi.', obs: { rock:0.55, bar:0.20, laser:0.25, move:1.8, dense:0.48, rockA:0xffbb00, rockB:0xaa6a00, fogMul:1.00, hazard:'Güneş patlamaları' } },
-  { id: 'abyss',   icon: '🌑', name: 'ABYSS',       need: 18000, reward: 4000,  coinMul: 1.4, scoreMul: 1.4, fog: 0x000000, ground: 0x0a0a12, rail: 0x445566, line: 0x223344, desc: 'Işığın kaçamadığı karanlık.', obs: { rock:0.45, bar:0.30, laser:0.25, move:1.4, dense:0.50, rockA:0x39424f, rockB:0x1e242e, fogMul:0.62, hazard:'Kör karanlık — görüş çok kısa' } },
-  { id: 'aurora',  icon: '🌈', name: 'AURORA',      need: 24000, reward: 5500,  coinMul: 1.5, scoreMul: 1.5, fog: 0x001a18, ground: 0x03302c, rail: 0x2effd5, line: 0x11998a, desc: 'Gökyüzü renklerle yanar.', obs: { rock:0.35, bar:0.25, laser:0.40, move:2.0, dense:0.50, rockA:0x2effd5, rockB:0x0e8f79, fogMul:1.05, hazard:'Sürekli salınan engeller' } },
-  { id: 'crimson', icon: '🔴', name: 'CRIMSON',     need: 32000, reward: 7500,  coinMul: 1.6, scoreMul: 1.6, fog: 0x1a0006, ground: 0x330011, rail: 0xff2b55, line: 0x99001f, desc: 'Kızıl fırtınalar diyarı.', obs: { rock:0.45, bar:0.25, laser:0.30, move:1.7, dense:0.60, rockA:0xff2b55, rockB:0x99001f, fogMul:0.85, hazard:'Yoğun kızıl fırtına' } },
-  { id: 'void',    icon: '🕳️', name: 'THE VOID',    need: 45000, reward: 12000, coinMul: 2.0, scoreMul: 2.0, fog: 0x02000a, ground: 0x0c0020, rail: 0x8844ff, line: 0x441199, desc: 'Haritanın bittiği yer. Efsane pilotlar için.', obs: { rock:0.34, bar:0.28, laser:0.38, move:2.2, dense:0.70, rockA:0x8844ff, rockB:0x3d1180, fogMul:0.70, hazard:'Her şey aynı anda' } },
+  { id: 'terra',   icon: '🌍', name: 'TERRA NOVA',  need: 0,     reward: 0,     coinMul: 1.0, scoreMul: 1.0, fog: 0x05010f, ground: 0x141033, rail: 0x3d3d8f, line: 0x3d3d8f, desc: 'Yolculuğun başladığı mavi dünya.', obs: { rock:0.42, bar:0.33, laser:0.25, move:1.0, dense:0.35, rockA:0x6b7a99, rockB:0x4f5d78, fogMul:1.00, hazard:'Dengeli' }, boss: { name:'SENTINEL',       type:0, color:0x66ff88, atk:1.00 } },
+  { id: 'ignis',   icon: '🌋', name: 'IGNIS',       need: 1500,  reward: 500,   coinMul: 1.1, scoreMul: 1.1, fog: 0x160301, ground: 0x2a0d08, rail: 0xff5522, line: 0x993311, desc: 'Lav nehirleri ve kızgın kayalar.', obs: { rock:0.60, bar:0.20, laser:0.20, move:1.6, dense:0.40, rockA:0xff5522, rockB:0x992a0e, fogMul:0.95, hazard:'Lav bombaları — savrulan kayalar' }, boss: { name:'MAGMA WRAITH',   type:1, color:0xff5522, atk:1.10 } },
+  { id: 'glacies', icon: '🧊', name: 'GLACIES',     need: 3500,  reward: 900,   coinMul: 1.15, scoreMul: 1.15, fog: 0x02121c, ground: 0x0d2733, rail: 0x44ddff, line: 0x1a5566, desc: 'Sonsuz buz tünelleri.', obs: { rock:0.25, bar:0.55, laser:0.20, move:0.7, dense:0.40, rockA:0x9fe8ff, rockB:0x5fb6d8, fogMul:0.90, hazard:'Buz duvarları' }, boss: { name:'FROST TITAN',    type:2, color:0x66e0ff, atk:1.05 } },
+  { id: 'nebula',  icon: '🔮', name: 'NEBULA PRIME', need: 6000,  reward: 1400,  coinMul: 1.2, scoreMul: 1.2, fog: 0x12021a, ground: 0x220d33, rail: 0xcc55ff, line: 0x66337f, desc: 'Mor bulutsunun kalbi.', obs: { rock:0.30, bar:0.25, laser:0.45, move:1.2, dense:0.42, rockA:0xcc55ff, rockB:0x7a2f9e, fogMul:1.00, hazard:'Enerji kapıları' }, boss: { name:'MIND WEAVER',    type:0, color:0xcc55ff, atk:1.15 } },
+  { id: 'cyber',   icon: '💚', name: 'CYBER-9',     need: 9000,  reward: 2000,  coinMul: 1.25, scoreMul: 1.25, fog: 0x001208, ground: 0x02180a, rail: 0x00ff88, line: 0x00aa55, desc: 'Yapay zekâların terk ettiği ızgara dünya.', obs: { rock:0.20, bar:0.25, laser:0.55, move:1.0, dense:0.45, rockA:0x00ff88, rockB:0x0a8a4a, fogMul:1.00, hazard:'Lazer ızgarası' }, boss: { name:'GRID WARDEN',    type:0, color:0x00ff88, atk:1.25 } },
+  { id: 'solaris', icon: '☀️', name: 'SOLARIS',     need: 13000, reward: 2800,  coinMul: 1.3, scoreMul: 1.3, fog: 0x1a0e00, ground: 0x2a1a05, rail: 0xffbb00, line: 0xaa7700, desc: 'Güneş fırtınalarının merkezi.', obs: { rock:0.55, bar:0.20, laser:0.25, move:1.8, dense:0.48, rockA:0xffbb00, rockB:0xaa6a00, fogMul:1.00, hazard:'Güneş patlamaları' }, boss: { name:'SOLAR FLARE',    type:1, color:0xffbb00, atk:1.30 } },
+  { id: 'abyss',   icon: '🌑', name: 'ABYSS',       need: 18000, reward: 4000,  coinMul: 1.4, scoreMul: 1.4, fog: 0x000000, ground: 0x0a0a12, rail: 0x445566, line: 0x223344, desc: 'Işığın kaçamadığı karanlık.', obs: { rock:0.45, bar:0.30, laser:0.25, move:1.4, dense:0.50, rockA:0x39424f, rockB:0x1e242e, fogMul:0.62, hazard:'Kör karanlık — görüş çok kısa' }, boss: { name:'THE DEVOURER',   type:2, color:0x445566, atk:1.35 } },
+  { id: 'aurora',  icon: '🌈', name: 'AURORA',      need: 24000, reward: 5500,  coinMul: 1.5, scoreMul: 1.5, fog: 0x001a18, ground: 0x03302c, rail: 0x2effd5, line: 0x11998a, desc: 'Gökyüzü renklerle yanar.', obs: { rock:0.35, bar:0.25, laser:0.40, move:2.0, dense:0.50, rockA:0x2effd5, rockB:0x0e8f79, fogMul:1.05, hazard:'Sürekli salınan engeller' }, boss: { name:'PRISM DANCER',   type:2, color:0x2effd5, atk:1.40 } },
+  { id: 'crimson', icon: '🔴', name: 'CRIMSON',     need: 32000, reward: 7500,  coinMul: 1.6, scoreMul: 1.6, fog: 0x1a0006, ground: 0x330011, rail: 0xff2b55, line: 0x99001f, desc: 'Kızıl fırtınalar diyarı.', obs: { rock:0.45, bar:0.25, laser:0.30, move:1.7, dense:0.60, rockA:0xff2b55, rockB:0x99001f, fogMul:0.85, hazard:'Yoğun kızıl fırtına' }, boss: { name:'BLOOD STORM',    type:1, color:0xff2b55, atk:1.50 } },
+  { id: 'void',    icon: '🕳️', name: 'THE VOID',    need: 45000, reward: 12000, coinMul: 2.0, scoreMul: 2.0, fog: 0x02000a, ground: 0x0c0020, rail: 0x8844ff, line: 0x441199, desc: 'Haritanın bittiği yer. Efsane pilotlar için.', obs: { rock:0.34, bar:0.28, laser:0.38, move:2.2, dense:0.70, rockA:0x8844ff, rockB:0x3d1180, fogMul:0.70, hazard:'Her şey aynı anda' }, boss: { name:'VOID SOVEREIGN', cycle:true, color:0x8844ff, atk:1.70 } },
 ];
 function planetById(id) { return PLANETS.find(p => p.id === id) || PLANETS[0]; }
 function planetOf() { return planetById(save.planet); }
@@ -1428,7 +1428,7 @@ let nextMile = 500;        // koşu içi kilometre taşı
 let dayFirstRun = false;   // günün ilk koşusu 2x altın
 let luckyReward = 0, luckyRoll = null;
 // boss durumu
-let bossActive = false, bossNext = 1500, bossT = 0, bossLevel = 0, bossAtkT = 0, bossIntro = 0, bossType = 0;
+let bossActive = false, bossNext = 1500, bossT = 0, bossLevel = 0, bossAtkT = 0, bossIntro = 0, bossType = 0, bossAtkMul = 1;
 // aktif dron ve altın seri sesi
 let droneDef = null;
 let coinStreak = 0, coinStreakT = 0;
@@ -3134,15 +3134,20 @@ function loop(now) {
     if (!bossActive && !eventActive && !battleOn && runStats.dist >= bossNext) {
       bossActive = true;
       bossLevel++;
-      bossType = (bossLevel - 1) % 3; // 0 Laser Grid · 1 Barrage · 2 Sweep
+      // 🪐 Bulunduğun gezegenin kendi boss'u: adı, rengi, saldırı türü ve temposu
+      const bPl = PLANETS[themeIdx % PLANETS.length] || PLANETS[0];
+      const bDef = bPl.boss || { name: 'UFO', type: (bossLevel - 1) % 3, color: 0x66ff88, atk: 1 };
+      bossType = bDef.cycle ? ((bossLevel - 1) % 3) : bDef.type;
+      bossAtkMul = bDef.atk || 1;
       bossT = 12;
-      bossAtkT = 1.4;
+      bossAtkT = 1.4 / bossAtkMul;
       boss.visible = true;
       boss.position.set(0, 7, -70);
       bossIntro = 0.8;
       boss.scale.setScalar(0.05);
-      const bossName = ['🛸 Laser Grid', '☄️ Barrage', '🌀 Sweep'][bossType];
-      boss.children[2].material.color.setHex([0x66ff88, 0xff5544, 0xaa66ff][bossType]); // kubbe rengi türe göre
+      const styleName = ['🛸 Laser Grid', '☄️ Barrage', '🌀 Sweep'][bossType];
+      const bossName = bDef.name + ' · ' + styleName;
+      boss.children[2].material.color.setHex(bDef.color); // kubbe rengi GEZEGENE göre
       popup('👽 ' + T('boss_in') + ' · ' + bossName, '#ff6666');
       tone(180, 120, 0.4, 'sawtooth', 0.3);
       setTimeout(() => tone(180, 120, 0.4, 'sawtooth', 0.3), 450);
@@ -3165,17 +3170,17 @@ function loop(now) {
         let lanes2 = [];
         if (bossType === 0) {
           // Laser Grid: 1-2 rastgele şerit
-          bossAtkT = Math.max(1.1, 2.0 - bossLevel * 0.12);
+          bossAtkT = Math.max(0.9, (2.0 - bossLevel * 0.12) / bossAtkMul);
           const n = Math.random() < Math.min(0.7, 0.3 + bossLevel * 0.1) ? 2 : 1;
           const ls = [0, 1, 2];
           for (let i = 0; i < n; i++) lanes2.push(ls.splice(Math.floor(Math.random() * ls.length), 1)[0]);
         } else if (bossType === 1) {
           // Barrage: tek şerit ama çok hızlı ardarda
-          bossAtkT = Math.max(0.55, 0.9 - bossLevel * 0.03);
+          bossAtkT = Math.max(0.42, (0.9 - bossLevel * 0.03) / bossAtkMul);
           lanes2.push(Math.floor(Math.random() * 3));
         } else {
           // Sweep: 2 bitişik şeride vurur, tek boş şerit bırakır (oraya kaçarsın)
-          bossAtkT = Math.max(1.3, 2.2 - bossLevel * 0.1);
+          bossAtkT = Math.max(1.0, (2.2 - bossLevel * 0.1) / bossAtkMul);
           const safe = Math.floor(Math.random() * 3);
           for (let li = 0; li < 3; li++) if (li !== safe) lanes2.push(li);
         }
@@ -4568,6 +4573,12 @@ window.openModConsole = function () {
         hz.style.cssText = 'font-size:11px;color:#ff9a7a;margin-top:2px';
         hz.textContent = '⚠ ' + p.obs.hazard;
         info.appendChild(hz);
+      }
+      if (found && p.boss) {
+        const bs = document.createElement('div');
+        bs.style.cssText = 'font-size:11px;color:#b388ff;margin-top:2px';
+        bs.textContent = '👽 ' + p.boss.name;
+        info.appendChild(bs);
       }
       row.appendChild(info);
 
