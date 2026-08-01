@@ -247,7 +247,8 @@ const FB = {
   },
   async submit() {
     const c = this.cfg();
-    if (!c || !this.ok || !save.best || this.banned) return;
+    // Kurucu ve adminler HİÇBİR sıralamaya girmez (skor bile göndermez)
+    if (!c || !this.ok || !save.best || this.banned || this.isStaff()) return;
     try {
       await fetch('https://firestore.googleapis.com/v1/projects/' + c.projectId +
         '/databases/(default)/documents/scores/' + this.uid +
@@ -291,11 +292,10 @@ const FB = {
           me: uid === this.uid,
         });
       }
-      // aktif banlı oyuncuları gizle + admin işareti koy
+      // aktif banlıları gizle + KURUCU/ADMİNLERİ SIRALAMADAN TAMAMEN ÇIKAR
       const bans = await this.fetchBans();
       const adm = await this.fetchAdmins();
-      const clean = rows.filter(r => !this.banActive(bans.get(r.id)));
-      for (const r of clean) { r.admin = adm.has(r.id); r.founder = (r.id === FOUNDER_UID); }
+      const clean = rows.filter(r => !this.banActive(bans.get(r.id)) && !adm.has(r.id) && r.id !== FOUNDER_UID);
       if (rows.length) { this.rows = clean; this.rowsAt = Date.now(); return clean; }
     } catch (e) {}
     return null;
@@ -474,7 +474,7 @@ const FB = {
   async list(coll) { const c = this.cfg(); if (!c || !this.ok) return []; try { const r = await (await this.authFetch(this.base() + '/' + coll + '?pageSize=20')).json(); return (r.documents || []).map(d => ({ id: d.name.split('/').pop(), ...this.dec(d) })); } catch (e) { return []; } },
   // ---- turnuva skor tablosu (günlük/haftalık ayrı koleksiyon) ----
   async submitTournament(sc) {
-    const c = this.cfg(); if (!c || !this.ok || !sc || this.banned) return;
+    const c = this.cfg(); if (!c || !this.ok || !sc || this.banned || this.isStaff()) return; // staff turnuvaya da girmez
     const day = Math.floor(Date.now() / 864e5), week = Math.floor(day / 7);
     for (const coll of ['t_day_' + day, 't_week_' + week]) {
       const cur = await this.get(coll + '/' + this.uid);
@@ -489,7 +489,15 @@ const FB = {
       const r = await fetch(this.base() + ':runQuery', { method: 'POST', headers: this.hdr(),
         body: JSON.stringify({ structuredQuery: { from: [{ collectionId: coll }], orderBy: [{ field: { fieldPath: 'best' }, direction: 'DESCENDING' }], limit: 100 } }) }).then(x => x.json());
       const rows = [];
-      for (const it of r) { if (!it.document) continue; const f = this.dec(it.document); const uid = it.document.name.split('/').pop(); rows.push({ name: f.name || 'Pilot', cc: f.country || 'US', s: f.best || 0, me: uid === this.uid }); }
+      const adm = await this.fetchAdmins();
+      const bans = await this.fetchBans();
+      for (const it of r) {
+        if (!it.document) continue;
+        const f = this.dec(it.document); const uid = it.document.name.split('/').pop();
+        if (adm.has(uid) || uid === FOUNDER_UID) continue;        // staff turnuvada görünmez
+        if (this.banActive(bans.get(uid))) continue;              // banlı görünmez
+        rows.push({ name: f.name || 'Pilot', cc: f.country || 'US', s: f.best || 0, me: uid === this.uid });
+      }
       return rows;
     } catch (e) { return null; }
   },
@@ -3978,10 +3986,154 @@ window.openModConsole = function () {
     const arg = parts.slice(1).join(' ');
 
     if (cmd === 'help' || cmd === '?') {
-      sys('commands:\n  ban <name>      ban a user (asks reason + time)\n  unban <name>    remove ban\n  who <name>      show user info\n  list            all known accounts\n  bans            active bans\n  clear           clear screen');
+      sys('MODERATION\n' +
+        '  ban <name>       ban a user (asks reason + time)\n' +
+        '  unban <name>     remove ban\n' +
+        '  bans             active bans\n' +
+        '  wipe <name>      delete a score (cheat cleanup)\n' +
+        'USERS\n' +
+        '  list             all known accounts\n' +
+        '  who <name>       user info\n' +
+        '  top [n]          leaderboard (staff excluded)\n' +
+        '  me               my role & uid\n' +
+        'STAFF\n' +
+        '  admins           list admins\n' +
+        '  promote <name>   make admin        (founder)\n' +
+        '  demote <name>    remove admin      (founder)\n' +
+        '  requests         admin applications (founder)\n' +
+        '  approve <name>   approve application (founder)\n' +
+        '  reject <name>    reject application  (founder)\n' +
+        '  banreqs          permanent-ban requests (founder)\n' +
+        'SUPPORT\n' +
+        '  reports          bug reports\n' +
+        '  tickets          support tickets\n' +
+        '  read <name>      read a ticket\n' +
+        '  say <name> <msg> reply to a ticket\n' +
+        'SYSTEM\n' +
+        '  stats            server counters\n' +
+        '  refresh          renew auth token\n' +
+        '  clear            clear screen');
       return;
     }
     if (cmd === 'clear') { log.innerHTML = ''; return; }
+    if (cmd === 'me' || cmd === 'whoami') { sys('role: ' + FB.role + '  ·  uid: ' + FB.uid + '  ·  name: ' + (save.name || 'Pilot')); return; }
+    if (cmd === 'refresh') { const ok = await FB.refreshToken(); await FB.detectRole(); sys(ok ? ('token renewed · role: ' + FB.role) : 'no session to renew'); return; }
+
+    if (cmd === 'stats') {
+      sys('loading…');
+      const [pl, bn, ad, rp, tk] = await Promise.all([
+        FB.listPlayers(), FB.fetchBans(), FB.listAdmins(), FB.listReports(), FB.listTickets(),
+      ]);
+      const act = [...bn.values()].filter(b => FB.banActive(b)).length;
+      line('   accounts : ' + pl.length);
+      line('   admins   : ' + ad.length);
+      line('   bans     : ' + act + ' active / ' + bn.size + ' total');
+      line('   reports  : ' + rp.length);
+      line('   tickets  : ' + tk.length);
+      return;
+    }
+
+    if (cmd === 'top') {
+      const n = Math.min(50, parseInt(arg, 10) || 10);
+      const rows = (await FB.fetchTop()) || [];
+      if (!rows.length) { sys('leaderboard empty'); return; }
+      sys('top ' + Math.min(n, rows.length) + ' (staff excluded):');
+      rows.slice(0, n).forEach((r, i) => line('   ' + String(i + 1).padStart(2) + '. ' + r.name + '  ·  ' + r.s));
+      return;
+    }
+
+    if (cmd === 'admins') {
+      const a = await FB.listAdmins();
+      if (!a.length) { sys('no admins yet'); return; }
+      sys(a.length + ' admin(s):');
+      a.forEach(x => line('   ' + (x.name || 'Admin') + '  ·  ' + x.id.slice(0, 12) + '…'));
+      return;
+    }
+
+    if (cmd === 'promote' || cmd === 'demote') {
+      if (FB.role !== 'founder') { err('founder only'); return; }
+      if (!arg) { err('usage: ' + cmd + ' <name>'); return; }
+      const u = await findUser(arg);
+      if (!u.length) { err('user not found: ' + arg); return; }
+      if (u.length > 1) { err('multiple matches:'); u.slice(0, 8).forEach(x => line('   ' + x.name)); return; }
+      if (cmd === 'promote') { const ok = await FB.approveAdmin(u[0].id, u[0].name); sys(ok ? ('✔ ' + u[0].name + ' is now ADMIN') : '✘ failed'); }
+      else { await FB.removeAdmin(u[0].id); sys('✔ ' + u[0].name + ' is no longer admin'); }
+      return;
+    }
+
+    if (cmd === 'requests') {
+      const rq = await FB.listAdminReqs();
+      if (!rq.length) { sys('no admin applications'); return; }
+      sys(rq.length + ' application(s):');
+      rq.forEach(r => line('   ' + (r.name || '?') + '  ·  ' + (r.reason || '').slice(0, 60) + '  ·  ' + r.id.slice(0, 10) + '…'));
+      sys('use: approve <name>  /  reject <name>');
+      return;
+    }
+    if (cmd === 'approve' || cmd === 'reject') {
+      if (FB.role !== 'founder') { err('founder only'); return; }
+      if (!arg) { err('usage: ' + cmd + ' <name>'); return; }
+      const rq = await FB.listAdminReqs();
+      const hit = rq.filter(r => (r.name || '').toLowerCase().includes(arg.toLowerCase()));
+      if (!hit.length) { err('application not found: ' + arg); return; }
+      if (cmd === 'approve') { const ok = await FB.approveAdmin(hit[0].id, hit[0].name); sys(ok ? ('✔ approved — ' + hit[0].name + ' is ADMIN') : '✘ failed'); }
+      else { await FB.rejectAdmin(hit[0].id); sys('✔ rejected ' + hit[0].name); }
+      return;
+    }
+    if (cmd === 'banreqs') {
+      const rq = await FB.listBanReqs();
+      if (!rq.length) { sys('no permanent-ban requests'); return; }
+      sys(rq.length + ' request(s):');
+      rq.forEach(r => line('   target ' + r.id.slice(0, 12) + '…  ·  by ' + String(r.by || '').slice(0, 8) + '…  ·  ' + (r.reason || '')));
+      return;
+    }
+
+    if (cmd === 'reports') {
+      const rp = await FB.listReports();
+      if (!rp.length) { sys('no bug reports'); return; }
+      sys(rp.length + ' report(s):');
+      rp.slice(0, 20).forEach(r => line('   [' + new Date(r.t || 0).toLocaleDateString() + '] ' + (r.name || '?') + ': ' + (r.text || '')));
+      return;
+    }
+    if (cmd === 'tickets') {
+      const tk = await FB.listTickets();
+      if (!tk.length) { sys('no tickets'); return; }
+      sys(tk.length + ' ticket(s):');
+      tk.forEach(t => line('   ' + (t.name || '?') + '  ·  ' + (t.id || '').slice(0, 12) + '…'));
+      sys('use: read <name>  /  say <name> <message>');
+      return;
+    }
+    if (cmd === 'read') {
+      if (!arg) { err('usage: read <name>'); return; }
+      const tk = await FB.listTickets();
+      const hit = tk.filter(t => (t.name || '').toLowerCase().includes(arg.toLowerCase()));
+      if (!hit.length) { err('ticket not found: ' + arg); return; }
+      const msgs = await FB.ticketMsgs(hit[0].uid || hit[0].id);
+      if (!msgs.length) { sys('(empty)'); return; }
+      sys('ticket ' + (hit[0].name || '?') + ':');
+      msgs.forEach(m => line('   ' + (m.from === 'admin' ? '[staff] ' : m.from === 'bot' ? '[bot]   ' : '[user]  ') + m.text));
+      return;
+    }
+    if (cmd === 'say') {
+      const sp = arg.indexOf(' ');
+      if (sp < 1) { err('usage: say <name> <message>'); return; }
+      const who = arg.slice(0, sp), msg = arg.slice(sp + 1);
+      const tk = await FB.listTickets();
+      const hit = tk.filter(t => (t.name || '').toLowerCase().includes(who.toLowerCase()));
+      if (!hit.length) { err('ticket not found: ' + who); return; }
+      const r = await FB.ticketSend(hit[0].uid || hit[0].id, 'admin', msg);
+      sys(r && !r.error ? ('✔ sent to ' + (hit[0].name || '?')) : '✘ failed (permission?)');
+      return;
+    }
+    if (cmd === 'wipe') {
+      if (!arg) { err('usage: wipe <name>'); return; }
+      const u = await findUser(arg);
+      if (!u.length) { err('user not found: ' + arg); return; }
+      if (u.length > 1) { err('multiple matches:'); u.slice(0, 8).forEach(x => line('   ' + x.name)); return; }
+      await FB.del('scores/' + u[0].id); FB.rowsAt = 0;
+      sys('✔ score wiped for ' + u[0].name);
+      return;
+    }
+    if (cmd === 'find') { return handle('who ' + arg); }
 
     if (cmd === 'list') {
       sys('loading…');
