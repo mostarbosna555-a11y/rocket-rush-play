@@ -301,6 +301,24 @@ const FB = {
     return null;
   },
 
+  // ---- OYUNCU KAYDI (her cihaz kendini yazar → skoru olmasa bile panelde görünür) ----
+  async touchPlayer() {
+    if (!this.cfg() || !this.ok) return;
+    await this.put('players/' + this.uid, {
+      name: (save.name || 'Pilot').slice(0, 16),
+      country: save.country || 'US',
+      best: Math.floor(save.best || 0),
+      t: Date.now(),
+    });
+  },
+  async listPlayers() {
+    try {
+      const r = await (await this.authFetch(this.base() + '/players?pageSize=300')).json();
+      return (r.documents || []).map(d => ({ id: d.name.split('/').pop(), ...this.dec(d) }))
+        .sort((a, b) => (b.t || 0) - (a.t || 0));   // en son görülen üstte
+    } catch (e) { return []; }
+  },
+
   // ---- MODERASYON + ROLLER ----
   banned: false,               // benim aktif ban durumum
   role: 'user',                // 'founder' | 'admin' | 'user'
@@ -398,7 +416,9 @@ const FB = {
     };
     const r = await this.put('bans/' + uid, rec);
     const ok = !!(r && !r.error && r.name);
-    if (ok) { await this.del('scores/' + uid); this._bansAt = 0; this.rowsAt = 0; }
+    // NOT: skor SİLİNMEZ — banlı oyuncu tablodan zaten gizlenir; ban kaldırılınca
+    // skoru geri gelir (yanlış ban tamamen geri alınabilir olsun diye).
+    if (ok) { this._bansAt = 0; this.rowsAt = 0; }
     return ok;
   },
   async unban(uid) { const r = await this.del('bans/' + uid); this._bansAt = 0; this.rowsAt = 0; return !(r && r.error); },
@@ -555,6 +575,7 @@ FB.init().then(async () => {
   FB.banned = FB.banActive(myBan);
   // banlıysa: oyuna hiç giremez — siyah kilit ekranı (sebep + kalan süre)
   if (FB.banned) { setTimeout(() => window.showBanScreen(myBan), 900); return; }
+  FB.touchPlayer();   // bu cihazı kaydet (moderasyon panelinde görünsün)
   if (typeof window.refreshStaffUI === 'function') window.refreshStaffUI(); // panel butonunu role göre göster
   const cl = await FB.cloudLoad();
   mergeCloud(cl);
@@ -3556,10 +3577,22 @@ setTimeout(() => {
   async function banPanel() {
     sM.h.textContent = '🔨 BAN PANELİ'; sM.body.innerHTML = 'Yükleniyor…';
     FB.rowsAt = 0; FB._bansAt = 0;
-    const rows = (await FB.fetchTop()) || []; const bans = await FB.fetchBans(); const admins = await FB.fetchAdmins();
+    const scoreRows = (await FB.fetchTop()) || [];
+    const players = await FB.listPlayers();
+    const bans = await FB.fetchBans(); const admins = await FB.fetchAdmins();
+    // TÜM hesaplar: kayıtlı oyuncular + skor tablosundakiler (skoru olmayan da görünür)
+    const byId = new Map();
+    for (const p of players) byId.set(p.id, { id: p.id, name: p.name || 'Pilot', s: p.best || 0, t: p.t || 0 });
+    for (const r of scoreRows) {
+      const e = byId.get(r.id) || { id: r.id, name: r.name, s: 0, t: 0 };
+      e.name = r.name || e.name; e.s = Math.max(e.s, r.s || 0);
+      byId.set(r.id, e);
+    }
+    const rows = [...byId.values()].sort((a, b) => (b.s || 0) - (a.s || 0));
+    for (const r of rows) { r.me = (r.id === FB.uid); r.admin = admins.has(r.id); r.founder = (r.id === FOUNDER_UID); }
     sM.body.innerHTML = '';
-    sM.body.appendChild(elc('div', 'color:#9aa;margin:2px 0 6px', 'SKOR TABLOSU (' + rows.length + ')'));
-    rows.slice(0, 60).forEach(r => {
+    sM.body.appendChild(elc('div', 'color:#9aa;margin:2px 0 6px', 'HESAPLAR (' + rows.length + ')'));
+    rows.slice(0, 80).forEach(r => {
       const prot = (r.id === FB.uid) || (r.id === FOUNDER_UID) || admins.has(r.id);
       const line = elc('div', 'display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #2a2140');
       const nm = elc('span', 'flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' + (r.id === FB.uid ? ';color:#ffd54d' : ''));
@@ -3596,7 +3629,10 @@ setTimeout(() => {
       const id = e[0], b = e[1];
       const line = elc('div', 'display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #2a2140');
       const nm = elc('span', 'flex:1;overflow:hidden;font-size:11px;color:#c99');
-      nm.textContent = id + ' · ' + (b.permanent ? 'KALICI' : ('⏳' + Math.ceil((b.until - Date.now()) / 864e5) + 'g')) +
+      const who = byId.get(id);
+      nm.style.fontSize = '12px';
+      nm.textContent = (who ? who.name : id.slice(0, 10) + '…') + ' · ' +
+        (b.permanent ? 'KALICI' : ('⏳' + Math.ceil((b.until - Date.now()) / 864e5) + 'g')) +
         ' · ' + (b.code ? T('br_' + b.code) : (b.reason || ''));
       const ub = elc('button', 'background:#166b3a;color:#fff;border:none;border-radius:8px;padding:6px 9px;font:700 12px "Segoe UI";cursor:pointer', '♻️');
       ub.onclick = async () => { ub.textContent = '…'; await FB.unban(id); popup && popup('♻️ Ban kaldırıldı', '#9dff70'); banPanel(); };
@@ -3755,7 +3791,7 @@ window.showBanScreen = function (rec) {
 // gördüğü sis yoğunluğuyla AYNI saydamlıkta belirir. Yani harita bilgi sızdırmaz
 // ve ek render maliyeti yoktur (sadece mevcut nesnelerin konumu okunur).
 (function () {
-  const W = 78, H = 108;                    // css px
+  const W = 108, H = 152;                   // css px (büyütüldü)
   const cv = document.createElement('canvas');
   cv.id = 'minimap';
   const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -3768,11 +3804,11 @@ window.showBanScreen = function (rec) {
   g.scale(dpr, dpr);
 
   const POOLS = [
-    { p: () => rockPool,    c: '#ff4455', r: 2.6 },   // engeller
-    { p: () => barrierPool, c: '#ff7a1a', r: 2.6 },
-    { p: () => laserPool,   c: '#ff2bd0', r: 2.4 },
-    { p: () => coinPool,    c: '#ffd54d', r: 1.7 },   // altın
-    { p: () => powerupPool, c: '#39e6ee', r: 2.4 },   // güçlendirme
+    { p: () => rockPool,    c: '#ff4455', r: 3.4 },   // engeller
+    { p: () => barrierPool, c: '#ff7a1a', r: 3.4 },
+    { p: () => laserPool,   c: '#ff2bd0', r: 3.2 },
+    { p: () => coinPool,    c: '#ffd54d', r: 2.2 },   // altın
+    { p: () => powerupPool, c: '#39e6ee', r: 3.2 },   // güçlendirme
   ];
 
   function draw() {
@@ -3819,7 +3855,7 @@ window.showBanScreen = function (rec) {
     // oyuncu (alt orta, seçili şeritte)
     const px = W / 2 + ((typeof LANES !== 'undefined' && typeof targetLane === 'number' ? LANES[targetLane] : 0) / 12) * W;
     g.fillStyle = '#9dff70';
-    g.beginPath(); g.moveTo(px, H - 6); g.lineTo(px - 4.5, H - 1); g.lineTo(px + 4.5, H - 1); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(px, H - 8); g.lineTo(px - 6, H - 1); g.lineTo(px + 6, H - 1); g.closePath(); g.fill();
   }
 
   setInterval(draw, 60);   // ~16 fps — göz için yeterli, işlemciye yük değil
