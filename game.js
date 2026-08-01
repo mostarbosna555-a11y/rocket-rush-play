@@ -1738,6 +1738,12 @@ function startDeath() {
   camShake = 1.4;
   playerGroup.visible = false;
   SFX.crash(); vib([60, 40, 120]);
+  // patlama şok dalgası: iç beyaz çekirdek + dışa açılan turuncu halka
+  try {
+    window.bigWave(playerGroup.position, 0xffffff, 7, 0.32);
+    window.bigWave(playerGroup.position, 0xff6a2a, 20, 0.75);
+    window.camPunch(10);
+  } catch (e) {}
   const p = playerGroup.position;
   for (const d of debris) {
     d.mesh.visible = true;
@@ -3033,6 +3039,12 @@ function loop(now) {
       if (bossT <= 0) {
         // boss pes etti: ödül + kaç
         bossActive = false;
+        // boss patlaması: çift halka + kamera tekmesi
+        try {
+          window.bigWave(boss.position, 0xffffff, 10, 0.35);
+          window.bigWave(boss.position, 0x66ff88, 30, 0.9);
+          window.camPunch(12);
+        } catch (e) {}
         boss.visible = false;
         const reward = 300 + bossLevel * 200;
         runCoins += reward;
@@ -3526,7 +3538,8 @@ setTimeout(() => {
     sM.body.innerHTML = '';
     sM.body.appendChild(mBtn('🐞 Hata bildirimleri', '#c2461f', viewReports));
     sM.body.appendChild(mBtn('💬 Destek talepleri', '#2ea86a', viewTickets));
-    sM.body.appendChild(mBtn('🔨 Ban paneli', '#8f0d20', banPanel));
+    sM.body.appendChild(mBtn('⌨️ KONSOL (ban / unban — isimle)', '#0d4a2a', () => { sM.hide(); window.openModConsole(); }));
+    sM.body.appendChild(mBtn('🔨 Ban paneli (liste)', '#8f0d20', banPanel));
     if (founder) {
       sM.body.appendChild(mBtn('🛡 Admin başvuruları', '#5a4a7a', viewAdminReqs));
       sM.body.appendChild(mBtn('👥 Adminleri yönet', '#3a5a8a', viewAdmins));
@@ -3859,4 +3872,247 @@ window.showBanScreen = function (rec) {
   }
 
   setInterval(draw, 60);   // ~16 fps — göz için yeterli, işlemciye yük değil
+})();
+
+// ==================== ⌨️ MODERASYON KONSOLU ====================
+// Liste beklemeden, isimle komut yazarak ban/unban. Firebase'de ad ile arar.
+//   > ban Pilot2550   → sebep sorar (1-5) → süre sorar (1-4) → uygular
+//   > unban Pilot2550 · who Pilot2550 · list · bans · help
+window.openModConsole = function () {
+  if (document.getElementById('modCon')) { document.getElementById('modCon').style.display = 'flex'; return; }
+  const wrap = document.createElement('div');
+  wrap.id = 'modCon';
+  wrap.style.cssText = 'position:fixed;inset:0;z-index:240;display:flex;align-items:center;justify-content:center;background:rgba(2,1,8,.94)';
+  wrap.innerHTML =
+    '<div style="width:min(96vw,520px);height:min(84vh,620px);display:flex;flex-direction:column;background:#05080c;' +
+    'border:1px solid #1f6f3f;border-radius:12px;overflow:hidden;font-family:ui-monospace,Menlo,Consolas,monospace">' +
+    '<div style="background:#0a1410;color:#5fe08a;padding:8px 12px;font:700 12px ui-monospace;border-bottom:1px solid #1f6f3f;' +
+    'display:flex;justify-content:space-between;align-items:center">' +
+    '<span>● rocket-rush · moderation console</span><span id="mcX" style="cursor:pointer;color:#ff6b6b">✕</span></div>' +
+    '<div id="mcLog" style="flex:1;overflow-y:auto;padding:10px 12px;font:400 12.5px/1.6 ui-monospace;color:#cfe8d8"></div>' +
+    '<div style="display:flex;border-top:1px solid #1f6f3f;background:#080d0b">' +
+    '<span style="color:#5fe08a;padding:10px 4px 10px 12px;font:700 13px ui-monospace">&gt;</span>' +
+    '<input id="mcIn" autocomplete="off" spellcheck="false" style="flex:1;background:transparent;border:none;outline:none;' +
+    'color:#eaffea;padding:10px 12px 10px 4px;font:400 13px ui-monospace" placeholder="ban Pilot2550">' +
+    '</div></div>';
+  document.body.appendChild(wrap);
+  const log = wrap.querySelector('#mcLog'), inp = wrap.querySelector('#mcIn');
+  wrap.querySelector('#mcX').onclick = () => { wrap.style.display = 'none'; };
+
+  function line(txt, color) {
+    const d = document.createElement('div');
+    d.style.cssText = 'white-space:pre-wrap;word-break:break-word' + (color ? (';color:' + color) : '');
+    d.textContent = txt;                       // textContent → XSS yok
+    log.appendChild(d); log.scrollTop = log.scrollHeight;
+  }
+  const sys = t => line('firebase: ' + t, '#5fe08a');
+  const err = t => line('firebase: ' + t, '#ff6b6b');
+  const me = t => line('> ' + t, '#9ec2ff');
+
+  const REASONS = [
+    { c: 'cheat', t: 'cheating / score manipulation' },
+    { c: 'spam', t: 'spam / advertising' },
+    { c: 'abuse', t: 'harassment / bad behavior' },
+    { c: 'name', t: 'inappropriate username' },
+    { c: 'other', t: 'rule violation' },
+  ];
+  const TIMES = [
+    { d: 1, t: '1 day' }, { d: 7, t: '1 week' }, { d: 30, t: '1 month' }, { d: 0, t: 'permanent (no appeal)' },
+  ];
+
+  // ---- ad ile kullanıcı bul (players + scores; tam eşleşme → kısmi) ----
+  async function findUser(q) {
+    const needle = q.toLowerCase();
+    const map = new Map();
+    try { for (const p of await FB.listPlayers()) map.set(p.id, { id: p.id, name: p.name || 'Pilot', best: p.best || 0 }); } catch (e) {}
+    try { for (const r of (await FB.fetchTop()) || []) { const e = map.get(r.id) || { id: r.id, name: r.name, best: 0 }; e.name = r.name || e.name; e.best = Math.max(e.best, r.s || 0); map.set(r.id, e); } } catch (e) {}
+    // banlılar tabloda gizli → ban kayıtlarındaki uid'leri de dahil et
+    try { for (const [uid] of await FB.fetchBans()) if (!map.has(uid)) map.set(uid, { id: uid, name: uid.slice(0, 10) + '…', best: 0 }); } catch (e) {}
+    const all = [...map.values()];
+    if (/^[A-Za-z0-9]{20,}$/.test(q)) { const byId = all.find(u => u.id === q); if (byId) return [byId]; }
+    const exact = all.filter(u => (u.name || '').toLowerCase() === needle);
+    if (exact.length) return exact;
+    return all.filter(u => (u.name || '').toLowerCase().includes(needle));
+  }
+
+  let mode = 'idle', target = null, chosen = null;
+
+  async function handle(raw) {
+    const txt = raw.trim();
+    if (!txt) return;
+    me(txt);
+
+    // --- sebep bekleniyor ---
+    if (mode === 'reason') {
+      const i = parseInt(txt, 10);
+      if (!(i >= 1 && i <= REASONS.length)) { err('invalid. pick 1-' + REASONS.length); return; }
+      chosen = REASONS[i - 1];
+      mode = 'time';
+      sys('time? ' + TIMES.map((t, k) => (k + 1) + '=' + t.t).join(' / '));
+      if (FB.role !== 'founder') sys('(note: you are admin — option 4 will be sent to founder as a request)');
+      return;
+    }
+    // --- süre bekleniyor ---
+    if (mode === 'time') {
+      const i = parseInt(txt, 10);
+      if (!(i >= 1 && i <= TIMES.length)) { err('invalid. pick 1-' + TIMES.length); return; }
+      const sel = TIMES[i - 1];
+      const perm = sel.d === 0;
+      mode = 'idle';
+      if (perm && FB.role !== 'founder') {
+        const ok = await FB.requestPermBan(target.id, chosen.t);
+        sys(ok ? ('request sent to founder — permanent ban for ' + target.name + ' (' + chosen.t + ')')
+               : 'request failed (permission?)');
+        return;
+      }
+      sys('applying…');
+      const ok = await FB.ban(target.id, { permanent: perm, days: sel.d || 7, code: chosen.c });
+      if (ok) sys('✔ server banned user ' + target.name + ' — ' + chosen.t + ' — ' + sel.t);
+      else err('✘ ban failed — no permission (are you founder/admin? token fresh?)');
+      return;
+    }
+
+    // --- komutlar ---
+    const parts = txt.split(/\s+/);
+    const cmd = parts[0].toLowerCase();
+    const arg = parts.slice(1).join(' ');
+
+    if (cmd === 'help' || cmd === '?') {
+      sys('commands:\n  ban <name>      ban a user (asks reason + time)\n  unban <name>    remove ban\n  who <name>      show user info\n  list            all known accounts\n  bans            active bans\n  clear           clear screen');
+      return;
+    }
+    if (cmd === 'clear') { log.innerHTML = ''; return; }
+
+    if (cmd === 'list') {
+      sys('loading…');
+      const users = await findUser('');
+      if (!users.length) { err('no accounts found (staff read permission / rules published?)'); return; }
+      sys(users.length + ' account(s):');
+      users.slice(0, 60).forEach(u => line('   ' + u.name + '  ·  ' + u.best + '  ·  ' + u.id.slice(0, 10) + '…'));
+      return;
+    }
+    if (cmd === 'bans') {
+      const m = await FB.fetchBans();
+      const act = [...m.entries()].filter(e => FB.banActive(e[1]));
+      if (!act.length) { sys('no active bans'); return; }
+      sys(act.length + ' active ban(s):');
+      act.forEach(([uid, b]) => line('   ' + uid.slice(0, 10) + '…  ·  ' + (b.permanent ? 'PERMANENT' : (Math.ceil((b.until - Date.now()) / 864e5) + 'd left')) + '  ·  ' + (b.code || b.reason || '')));
+      return;
+    }
+    if (cmd === 'who') {
+      if (!arg) { err('usage: who <name>'); return; }
+      const u = await findUser(arg);
+      if (!u.length) { err('user not found: ' + arg); return; }
+      const bans = await FB.fetchBans();
+      u.slice(0, 5).forEach(x => {
+        const b = bans.get(x.id);
+        line('   ' + x.name + '  ·  best ' + x.best + '  ·  ' + x.id +
+          (FB.banActive(b) ? ('  ·  BANNED (' + (b.permanent ? 'permanent' : Math.ceil((b.until - Date.now()) / 864e5) + 'd') + ')') : ''));
+      });
+      return;
+    }
+    if (cmd === 'unban') {
+      if (!arg) { err('usage: unban <name>'); return; }
+      const u = await findUser(arg);
+      if (!u.length) { err('user not found: ' + arg); return; }
+      if (u.length > 1) { err('multiple matches, be specific:'); u.slice(0, 8).forEach(x => line('   ' + x.name)); return; }
+      const ok = await FB.unban(u[0].id);
+      sys(ok ? ('✔ unbanned ' + u[0].name) : '✘ failed (permission?)');
+      return;
+    }
+    if (cmd === 'ban') {
+      if (!arg) { err('usage: ban <name>'); return; }
+      const u = await findUser(arg);
+      if (!u.length) { err('user not found: ' + arg + '  (try: list)'); return; }
+      if (u.length > 1) { err('multiple matches, be specific:'); u.slice(0, 8).forEach(x => line('   ' + x.name)); return; }
+      target = u[0];
+      if (target.id === FB.uid) { err('you cannot ban yourself'); return; }
+      if (target.id === FOUNDER_UID) { err('you cannot ban the founder'); return; }
+      const adm = await FB.fetchAdmins();
+      if (adm.has(target.id) && FB.role !== 'founder') { err('admins can only be banned by the founder'); return; }
+      sys('found ' + target.name + ' (' + target.id.slice(0, 12) + '…)');
+      mode = 'reason';
+      sys('why? ' + REASONS.map((r, k) => (k + 1) + '=' + r.t).join(' / '));
+      return;
+    }
+    err('unknown command: ' + cmd + '   (type help)');
+  }
+
+  inp.addEventListener('keydown', async e => {
+    if (e.key !== 'Enter') return;
+    const v = inp.value; inp.value = '';
+    try { await handle(v); } catch (ex) { err('error: ' + ex.message); }
+  });
+
+  line('rocket-rush moderation console v1', '#5fe08a');
+  line('role: ' + FB.role + '  ·  uid: ' + String(FB.uid || '').slice(0, 12) + '…', '#7a8a80');
+  line('type "help" for commands', '#7a8a80');
+  setTimeout(() => inp.focus(), 120);
+};
+
+// ==================== ✨ GÖRSEL EFEKT KATMANI (şok dalgaları) ====================
+// Havuzlanmış halka meshleri: patlama/boss/güçlendirme anlarında genişleyip söner.
+// Ek doku/dosya yok, additive blending — ucuz ve gösterişli.
+(function () {
+  const RINGS = [];
+  const ringGeo = new THREE.RingGeometry(0.7, 1, 40);
+  for (let i = 0; i < 6; i++) {
+    const mat = new THREE.MeshBasicMaterial({
+      color: 0xffffff, transparent: true, opacity: 0,
+      side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false, fog: false,
+    });
+    const m = new THREE.Mesh(ringGeo, mat);
+    m.visible = false;
+    scene.add(m);
+    RINGS.push({ mesh: m, mat: mat, t: 0, dur: 1, from: 1, to: 10, active: false });
+  }
+
+  // pos: THREE.Vector3 · color: hex · maxR: son yarıçap · dur: süre (sn)
+  window.bigWave = function (pos, color, maxR, dur) {
+    const r = RINGS.find(x => !x.active) || RINGS[0];
+    r.active = true; r.t = 0; r.dur = dur || 0.55; r.from = 0.6; r.to = maxR || 12;
+    r.mat.color.setHex(color === undefined ? 0xffffff : color);
+    r.mesh.position.copy(pos);
+    r.mesh.rotation.set(0, 0, Math.random() * 3);
+    r.mesh.scale.setScalar(r.from);
+    r.mesh.visible = true;
+    r.mat.opacity = 0.95;
+  };
+
+  let last = performance.now();
+  (function tick(now) {
+    requestAnimationFrame(tick);
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    for (const r of RINGS) {
+      if (!r.active) continue;
+      r.t += dt;
+      const k = Math.min(1, r.t / r.dur);
+      const e = 1 - Math.pow(1 - k, 3);                 // ease-out: hızlı açılır, yavaş söner
+      r.mesh.scale.setScalar(r.from + (r.to - r.from) * e);
+      r.mat.opacity = 0.95 * (1 - k) * (1 - k);
+      r.mesh.rotation.z += dt * 0.6;
+      if (k >= 1) { r.active = false; r.mesh.visible = false; r.mat.opacity = 0; }
+    }
+  })(last);
+
+  // ---- Kamera "punch": turbo başlarken FOV genişler, yumuşak geri döner ----
+  const BASE_FOV = camera.fov;
+  let fovKick = 0, prevTurbo = 0;
+  window.camPunch = function (amount) { fovKick = Math.max(fovKick, amount || 6); };
+  let lt = performance.now();
+  (function fovTick(now) {
+    requestAnimationFrame(fovTick);
+    const dt = Math.min(0.05, (now - lt) / 1000); lt = now;
+    // turbo açıldığı an bir kere tekmele
+    try {
+      const t = (typeof fx !== 'undefined' && fx.turbo) ? fx.turbo : 0;
+      if (t > 0 && prevTurbo <= 0) window.camPunch(8);
+      prevTurbo = t;
+      // turbo sürerken hafif geniş açı (hız hissi)
+      const target = BASE_FOV + (t > 0 ? 5 : 0) + fovKick;
+      camera.fov += (target - camera.fov) * Math.min(1, dt * 6);
+      fovKick = Math.max(0, fovKick - dt * 22);
+      camera.updateProjectionMatrix();
+    } catch (e) {}
+  })(lt);
 })();
