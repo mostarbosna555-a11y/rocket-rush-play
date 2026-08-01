@@ -3934,8 +3934,12 @@ window.openModConsole = function () {
     const map = new Map();
     try { for (const p of await FB.listPlayers()) map.set(p.id, { id: p.id, name: p.name || 'Pilot', best: p.best || 0 }); } catch (e) {}
     try { for (const r of (await FB.fetchTop()) || []) { const e = map.get(r.id) || { id: r.id, name: r.name, best: 0 }; e.name = r.name || e.name; e.best = Math.max(e.best, r.s || 0); map.set(r.id, e); } } catch (e) {}
-    // banlılar tabloda gizli → ban kayıtlarındaki uid'leri de dahil et
-    try { for (const [uid] of await FB.fetchBans()) if (!map.has(uid)) map.set(uid, { id: uid, name: uid.slice(0, 10) + '…', best: 0 }); } catch (e) {}
+    // isim kaynakları: destek talepleri + admin başvuruları (players'a girmemiş
+    // eski cihazların adı buradan bulunur)
+    try { for (const t of await FB.listTickets()) { const id = t.uid || t.id; const e = map.get(id) || { id: id, name: t.name || 'Pilot', best: 0 }; if (!map.has(id)) map.set(id, e); else if (!e.name || /…$/.test(e.name)) e.name = t.name || e.name; } } catch (e) {}
+    try { for (const r of await FB.listAdminReqs()) { const e = map.get(r.id) || { id: r.id, name: r.name || 'Pilot', best: 0 }; if (!map.has(r.id)) map.set(r.id, e); } } catch (e) {}
+    // banlılar tabloda gizli → ban kayıtlarındaki uid'leri de dahil et (adı yoksa uid)
+    try { for (const [uid] of await FB.fetchBans()) if (!map.has(uid)) map.set(uid, { id: uid, name: '(bilinmiyor)', best: 0, unknown: true }); } catch (e) {}
     const all = [...map.values()];
     if (/^[A-Za-z0-9]{20,}$/.test(q)) { const byId = all.find(u => u.id === q); if (byId) return [byId]; }
     const exact = all.filter(u => (u.name || '').toLowerCase() === needle);
@@ -4139,8 +4143,16 @@ window.openModConsole = function () {
       sys('loading…');
       const users = await findUser('');
       if (!users.length) { err('no accounts found (staff read permission / rules published?)'); return; }
+      const adm = await FB.fetchAdmins();
+      const bns = await FB.fetchBans();
       sys(users.length + ' account(s):');
-      users.slice(0, 60).forEach(u => line('   ' + u.name + '  ·  ' + u.best + '  ·  ' + u.id.slice(0, 10) + '…'));
+      users.forEach(u => {
+        const tag = (u.id === FOUNDER_UID) ? ' [FOUNDER]' : adm.has(u.id) ? ' [ADMIN]' : '';
+        const bn = FB.banActive(bns.get(u.id)) ? '  ⛔BANNED' : '';
+        const nm = u.unknown ? ('(no name yet — device hasn\'t opened new version)') : u.name;
+        line('   ' + nm + tag + '  ·  ' + u.best + '  ·  ' + u.id.slice(0, 10) + '…' + bn);
+      });
+      sys('tip: you can also use the full uid → ban <uid>');
       return;
     }
     if (cmd === 'bans') {
